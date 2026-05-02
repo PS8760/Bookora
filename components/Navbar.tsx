@@ -46,7 +46,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-18 py-2">
           {/* Logo */}
           <Link href="/" className="flex items-center group">
-            <BookoraLogo height={96} linked={false} />
+            <BookoraLogo height={56} linked={false} />
           </Link>
 
           {/* Desktop Nav */}

@@ -40,8 +40,8 @@ const features = [
     ),
     title: "Multi-Role Access",
     desc: "Customers, Organisers, and Admins each get a tailored experience with the right permissions.",
-    color: "#E1F5FE",
-    accent: "#0277BD",
+    color: "#F5EDF4",
+    accent: "#724A6A",
   },
   {
     icon: (

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { invalidateSlotCache } from "@/lib/slot-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,8 @@ function getRole(user: SessionUser) {
   return user.role ?? "customer";
 }
 
-// GET /api/bookings - List bookings for organisers/admins.
+// ─── GET /api/bookings ────────────────────────────────────────────────────────
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
@@ -40,12 +42,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
-    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);
-    const skip = (page - 1) * limit;
+    const page   = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
+    const limit  = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);
+    const skip   = (page - 1) * limit;
 
     const where = {
-      ...(status ? { status: status.toUpperCase() as "PENDING" | "CONFIRMED" | "CANCELLED" | "RESCHEDULED" | "COMPLETED" | "NO_SHOW" } : {}),
+      ...(status ? { status: status.toUpperCase() as any } : {}),
       ...(role === "organiser" ? { service: { organiserId: user.id } } : {}),
     };
 
@@ -56,10 +58,10 @@ export async function GET(request: NextRequest) {
           service: { include: { organiser: { select: { id: true, name: true, email: true } } } },
           providerSlot: true,
           customer: { select: { id: true, name: true, email: true, image: true } },
-          provider: { select: { id: true, name: true, email: true, image: true } },
-          resource: true,
-          payments: { orderBy: { createdAt: "desc" }, take: 1 },
-          answers: { include: { question: true } },
+          provider:  { select: { id: true, name: true, email: true, image: true } },
+          resource:  true,
+          payments:  { orderBy: { createdAt: "desc" }, take: 1 },
+          answers:   { include: { question: true } },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -81,7 +83,22 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/bookings - Create a booking with atomic capacity control.
+// ─── POST /api/bookings ───────────────────────────────────────────────────────
+/**
+ * Create a booking with atomic capacity control.
+ *
+ * Double-booking prevention strategy:
+ * 1. Idempotency check: if the customer already has an active booking for this
+ *    slot, return it immediately (safe retry).
+ * 2. Optimistic lock: `updateMany` with `booked <= capacity - requested` as a
+ *    WHERE condition. If 0 rows updated → capacity was taken between our read
+ *    and write → return 409 CAPACITY_EXCEEDED.
+ * 3. The `version` field increments on every capacity change, so concurrent
+ *    requests that read the same version will race on the updateMany — only
+ *    one wins.
+ * 4. After a successful booking, invalidate the slot cache so the next poll
+ *    immediately reflects the updated capacity.
+ */
 export async function POST(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers });
@@ -101,12 +118,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const slotId = String(body.slotId ?? "");
-    const serviceId = String(body.appointmentId ?? body.serviceId ?? "");
+    const slotId            = String(body.slotId ?? "");
+    const serviceId         = String(body.appointmentId ?? body.serviceId ?? "");
     const capacityRequested = Math.max(Number(body.capacityRequested ?? 1), 1);
-    const idempotencyKey = String(body.idempotencyKey ?? randomUUID());
-    const formAnswers = body.formAnswers ?? {};
-    const questionAnswers = Array.isArray(body.questionAnswers) ? body.questionAnswers : [];
+    const idempotencyKey    = String(body.idempotencyKey ?? randomUUID());
+    const slotVersion       = body.slotVersion != null ? Number(body.slotVersion) : undefined;
+    const formAnswers       = body.formAnswers ?? {};
+    const questionAnswers   = Array.isArray(body.questionAnswers) ? body.questionAnswers : [];
 
     if (!slotId || !serviceId) {
       return NextResponse.json(
@@ -115,20 +133,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Idempotency: return existing active booking for this slot ──────────────
     const existingBooking = await prisma.booking.findFirst({
       where: {
-        customerId: user.id,
+        customerId:    user.id,
         providerSlotId: slotId,
-        status: { in: [...ACTIVE_STATUSES] },
+        status:        { in: [...ACTIVE_STATUSES] },
       },
       include: { providerSlot: true, service: true, payments: true },
     });
 
     if (existingBooking) {
-      return NextResponse.json({ data: existingBooking, message: "Booking already exists" });
+      return NextResponse.json(
+        { data: existingBooking, message: "Booking already exists" },
+        { status: 200 }
+      );
     }
 
+    // ── Atomic transaction ─────────────────────────────────────────────────────
     const result = await prisma.$transaction(async (tx) => {
+      // Fetch slot + service in one query
       const slot = await tx.providerSlot.findFirst({
         where: { id: slotId, serviceId, isActive: true },
         include: {
@@ -138,65 +162,81 @@ export async function POST(request: NextRequest) {
               questions: { include: { options: true }, orderBy: { order: "asc" } },
             },
           },
-          user: { select: { id: true, name: true, email: true } },
+          user:     { select: { id: true, name: true, email: true } },
           resource: true,
         },
       });
 
-      if (!slot) throw new Error("SLOT_NOT_FOUND");
-      if (!slot.service.isPublished) throw new Error("APPOINTMENT_NOT_PUBLISHED");
+      if (!slot)                        throw new Error("SLOT_NOT_FOUND");
+      if (!slot.service.isPublished)    throw new Error("APPOINTMENT_NOT_PUBLISHED");
       if (slot.startTime <= new Date()) throw new Error("SLOT_PAST");
-      if (capacityRequested > slot.capacity - slot.booked) throw new Error("CAPACITY_EXCEEDED");
 
+      const available = slot.capacity - slot.booked;
+      if (capacityRequested > available) throw new Error("CAPACITY_EXCEEDED");
+
+      // Validate required questions
       for (const question of slot.service.questions) {
-        const answer = questionAnswers.find((item: { questionId?: string }) => item.questionId === question.id);
-        if (question.required && (!answer || (!answer.answerText && !answer.selectedOptionId))) {
+        const answer = questionAnswers.find(
+          (item: { questionId?: string }) => item.questionId === question.id
+        );
+        if (
+          question.required &&
+          (!answer || (!answer.answerText && !answer.selectedOptionId))
+        ) {
           throw new Error("REQUIRED_QUESTIONS_MISSING");
         }
         if (answer?.selectedOptionId) {
-          const validOption = question.options.some((option) => option.id === answer.selectedOptionId);
-          if (!validOption) throw new Error("INVALID_QUESTION_OPTION");
+          const valid = question.options.some((o) => o.id === answer.selectedOptionId);
+          if (!valid) throw new Error("INVALID_QUESTION_OPTION");
         }
       }
 
+      // ── Optimistic lock: atomic capacity decrement ─────────────────────────
+      // WHERE condition ensures we only update if capacity is still available.
+      // If slotVersion is provided, also check the version matches — this
+      // prevents a client with stale capacity knowledge from booking.
+      // If another request already took the last spot, count === 0 → 409.
       const capacityUpdate = await tx.providerSlot.updateMany({
         where: {
-          id: slotId,
+          id:      slotId,
           isActive: true,
-          booked: { lte: slot.capacity - capacityRequested },
+          booked:  { lte: slot.capacity - capacityRequested },
+          ...(slotVersion !== undefined ? { version: slotVersion } : {}),
         },
         data: {
-          booked: { increment: capacityRequested },
+          booked:  { increment: capacityRequested },
           version: { increment: 1 },
         },
       });
 
       if (capacityUpdate.count !== 1) throw new Error("CAPACITY_EXCEEDED");
 
-      const status = slot.service.manualConfirm ? "PENDING" : "CONFIRMED";
+      // ── Determine booking status ───────────────────────────────────────────
+      const status        = slot.service.manualConfirm ? "PENDING" : "CONFIRMED";
       const paymentStatus = slot.service.advancePayment ? "PENDING" : "UNPAID";
 
+      // ── Create booking with all related records ────────────────────────────
       const booking = await tx.booking.create({
         data: {
-          customerId: user.id,
+          customerId:    user.id,
           serviceId,
           providerSlotId: slotId,
-          userId: slot.userId,
-          resourceId: slot.resourceId,
+          userId:        slot.userId,
+          resourceId:    slot.resourceId,
           status,
           paymentStatus,
-          confirmedAt: status === "CONFIRMED" ? new Date() : null,
+          confirmedAt:   status === "CONFIRMED" ? new Date() : null,
           notes: JSON.stringify({
-            phone: formAnswers.phone ?? null,
-            notes: formAnswers.notes ?? null,
+            phone:             formAnswers.phone ?? null,
+            notes:             formAnswers.notes ?? null,
             capacityRequested,
           }),
           payments: slot.service.advancePayment && slot.service.paymentAmount
             ? {
                 create: {
-                  amount: slot.service.paymentAmount,
-                  currency: slot.service.currency,
-                  status: "PENDING",
+                  amount:          slot.service.paymentAmount,
+                  currency:        slot.service.currency,
+                  status:          "PENDING",
                   gatewayProvider: "razorpay",
                   idempotencyKey,
                 },
@@ -204,13 +244,13 @@ export async function POST(request: NextRequest) {
             : undefined,
           auditLogs: {
             create: {
-              actorId: user.id,
-              action: "CREATED",
+              actorId:  user.id,
+              action:   "CREATED",
               metadata: {
                 idempotencyKey,
                 capacityRequested,
                 customerSnapshot: {
-                  name: formAnswers.name ?? user.name ?? null,
+                  name:  formAnswers.name  ?? user.name  ?? null,
                   email: formAnswers.email ?? user.email ?? null,
                 },
               },
@@ -221,27 +261,29 @@ export async function POST(request: NextRequest) {
           notifications: {
             create: [
               {
-                userId: user.id,
+                userId:  user.id,
                 channel: "EMAIL",
                 subject: status === "CONFIRMED" ? "Booking confirmed" : "Booking request received",
-                body: `Your booking for ${slot.service.title} is ${status === "CONFIRMED" ? "confirmed" : "pending confirmation"}.`,
+                body:    `Your booking for ${slot.service.title} is ${
+                  status === "CONFIRMED" ? "confirmed" : "pending confirmation"
+                }.`,
               },
               {
-                userId: slot.service.organiserId,
+                userId:  slot.service.organiserId,
                 channel: "EMAIL",
                 subject: "New booking",
-                body: `${formAnswers.name ?? user.name ?? "A customer"} booked ${slot.service.title}.`,
+                body:    `${formAnswers.name ?? user.name ?? "A customer"} booked ${slot.service.title}.`,
               },
             ],
           },
           answers: questionAnswers.length > 0
             ? {
                 create: questionAnswers
-                  .filter((answer: { questionId?: string; answerText?: string; selectedOptionId?: string }) => answer.questionId)
-                  .map((answer: { questionId: string; answerText?: string; selectedOptionId?: string }) => ({
-                    questionId: answer.questionId,
-                    answerText: answer.answerText ?? null,
-                    selectedOptionId: answer.selectedOptionId ?? null,
+                  .filter((a: any) => a.questionId)
+                  .map((a: any) => ({
+                    questionId:       a.questionId,
+                    answerText:       a.answerText       ?? null,
+                    selectedOptionId: a.selectedOptionId ?? null,
                   })),
               }
             : undefined,
@@ -256,40 +298,45 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return booking;
+      return { booking, slotStartTime: slot.startTime };
     });
 
-    return NextResponse.json({ data: result }, { status: 201 });
+    // ── Cache invalidation (outside transaction) ───────────────────────────────
+    // Immediately bust the slot cache so the next poll reflects updated capacity.
+    const slotDate = result.slotStartTime.toISOString().slice(0, 10);
+    invalidateSlotCache(serviceId, slotDate);
+
+    return NextResponse.json({ data: result.booking }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "INTERNAL_ERROR";
+    const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
     console.error("POST /api/bookings error:", error);
 
-    const statusByCode: Record<string, number> = {
-      SLOT_NOT_FOUND: 404,
-      APPOINTMENT_NOT_PUBLISHED: 403,
-      SLOT_PAST: 409,
-      CAPACITY_EXCEEDED: 409,
-      REQUIRED_QUESTIONS_MISSING: 400,
-      INVALID_QUESTION_OPTION: 400,
+    const httpStatus: Record<string, number> = {
+      SLOT_NOT_FOUND:              404,
+      APPOINTMENT_NOT_PUBLISHED:   403,
+      SLOT_PAST:                   409,
+      CAPACITY_EXCEEDED:           409,
+      REQUIRED_QUESTIONS_MISSING:  400,
+      INVALID_QUESTION_OPTION:     400,
     };
 
-    const messageByCode: Record<string, string> = {
-      SLOT_NOT_FOUND: "Slot not found",
-      APPOINTMENT_NOT_PUBLISHED: "Appointment not published",
-      SLOT_PAST: "Cannot book past slots",
-      CAPACITY_EXCEEDED: "Slot capacity exceeded",
-      REQUIRED_QUESTIONS_MISSING: "Please answer all required questions",
-      INVALID_QUESTION_OPTION: "Invalid answer selected",
+    const humanMessage: Record<string, string> = {
+      SLOT_NOT_FOUND:              "Slot not found or no longer available",
+      APPOINTMENT_NOT_PUBLISHED:   "This appointment is not available for booking",
+      SLOT_PAST:                   "Cannot book a slot in the past",
+      CAPACITY_EXCEEDED:           "This slot is fully booked — please choose another time",
+      REQUIRED_QUESTIONS_MISSING:  "Please answer all required questions",
+      INVALID_QUESTION_OPTION:     "Invalid answer selected",
     };
 
     return NextResponse.json(
       {
         error: {
-          code: statusByCode[message] ? message : "INTERNAL_ERROR",
-          message: messageByCode[message] ?? "Failed to create booking",
+          code:    httpStatus[code] ? code : "INTERNAL_ERROR",
+          message: humanMessage[code] ?? "Failed to create booking",
         },
       },
-      { status: statusByCode[message] ?? 500 }
+      { status: httpStatus[code] ?? 500 }
     );
   }
 }

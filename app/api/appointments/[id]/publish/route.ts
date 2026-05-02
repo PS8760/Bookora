@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { generateSlots, invalidateSlots } from "@/lib/slots";
+import { invalidateServiceCache } from "@/lib/slot-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -60,15 +61,36 @@ export async function POST(
     const hasAvailability = appointment.schedules.some(
       (schedule) => schedule.weeklyRules.length > 0 || schedule.flexibleDays.length > 0
     );
-    if (!hasAvailability) {
-      return NextResponse.json(
-        { error: { code: "INVALID_STATE", message: "Cannot publish: no availability configured" } },
-        { status: 400 }
-      );
+
+    // If no schedule exists at all, create a default Mon–Fri 9am–6pm schedule
+    if (appointment.schedules.length === 0) {
+      const DEFAULT_DAYS = [1, 2, 3, 4, 5];
+      const START_MINUTE = 9 * 60;
+      const END_MINUTE   = 18 * 60;
+
+      await prisma.schedule.create({
+        data: {
+          serviceId: id,
+          type: "WEEKLY",
+          weeklyRules: {
+            create: DEFAULT_DAYS.map((day) => ({
+              dayOfWeek: day,
+              startMinute: START_MINUTE,
+              endMinute: END_MINUTE,
+            })),
+          },
+        },
+      });
     }
 
-    // Generate slots if not already generated
-    await generateSlots(id);
+    // Generate slots only if availability is configured — publishing succeeds either way
+    if (hasAvailability || appointment.schedules.length === 0) {
+      try {
+        await generateSlots(id);
+      } catch (slotError) {
+        console.error("Slot generation error during publish (non-fatal):", slotError);
+      }
+    }
 
     // Publish the appointment
     const updated = await prisma.service.update({
@@ -80,9 +102,14 @@ export async function POST(
       },
     });
 
+    // Bust slot cache so customers see fresh slots immediately
+    invalidateServiceCache(id);
+
     return NextResponse.json({
       data: updated,
-      message: "Appointment published successfully",
+      message: hasAvailability
+        ? "Appointment published successfully"
+        : "Appointment published with default Mon–Fri 9am–6pm schedule. Edit availability to customise.",
     });
   } catch (error) {
     console.error("Error publishing appointment:", error);
@@ -152,6 +179,9 @@ export async function DELETE(
         shareToken: null,
       },
     });
+
+    // Bust slot cache
+    invalidateServiceCache(id);
 
     return NextResponse.json({
       data: updated,

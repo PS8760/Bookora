@@ -2,31 +2,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef } from "react";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 export default function HeroSection() {
-  const heroRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("animate-fade-in-up");
-          }
-        });
-      },
-      { threshold: 0.1 }
-    );
-    const elements = heroRef.current?.querySelectorAll(".reveal");
-    elements?.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
+  const [heroRef, heroVisible] = useScrollReveal({ threshold: 0.1, rootMargin: "0px" });
 
   return (
     <section
       ref={heroRef}
-      className="relative min-h-screen flex items-center overflow-hidden bg-[#FFFBE9]"
+      className={`relative min-h-screen flex items-center overflow-hidden bg-[#FFFBE9] ${heroVisible ? "sr-visible" : ""}`}
       style={{ paddingTop: "80px" }}
     >
       {/* Background decorations */}
@@ -63,7 +47,7 @@ export default function HeroSection() {
           {/* Left — Text content */}
           <div className="flex flex-col gap-6">
             {/* Headline */}
-            <div className="reveal opacity-0">
+            <div className="sr-item" style={{ "--sr-delay": "0.1" } as React.CSSProperties}>
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.08] tracking-tight text-[#1A1A2E]">
                 Book Smarter.
                 <br />
@@ -74,14 +58,16 @@ export default function HeroSection() {
             </div>
 
             {/* Subtext */}
-            <p className="reveal opacity-0 delay-100 text-base sm:text-lg text-[#4A4A6A] leading-relaxed max-w-lg italic">
-              Seamlessly schedule appointments,<br />
-              manage resources, and stay in control<br />
-              <span className="not-italic font-medium text-[#724A6A]">~all in real time with Bookora</span>
-            </p>
+            <div className="sr-item" style={{ "--sr-delay": "0.25" } as React.CSSProperties}>
+              <p className="text-base sm:text-lg text-[#4A4A6A] leading-relaxed max-w-lg italic">
+                Seamlessly schedule appointments,<br />
+                manage resources, and stay in control<br />
+                <span className="not-italic font-medium text-[#724A6A]">~all in real time with Bookora</span>
+              </p>
+            </div>
 
             {/* CTA buttons */}
-            <div className="reveal opacity-0 delay-200 flex flex-wrap gap-3 pt-2">
+            <div className="sr-item flex flex-wrap gap-3 pt-2" style={{ "--sr-delay": "0.4" } as React.CSSProperties}>
               <Link
                 href="/book"
                 className="btn-primary text-base px-7 py-3.5 rounded-xl shadow-[0_4px_20px_rgba(114,74,106,0.3)]"
@@ -98,8 +84,8 @@ export default function HeroSection() {
           </div>
 
           {/* Right — Graphic Element */}
-          <div className="reveal opacity-0 delay-200 relative flex items-center justify-center">
-            <div className="relative w-full mx-auto">
+          <div className="sr-item-right relative flex items-center justify-center" style={{ "--sr-delay": "0.3" } as React.CSSProperties}>
+            <div className="relative w-full mx-auto animate-float">
               <Image
                 src="/Graphic_Element.png"
                 alt="Bookora scheduling illustration"

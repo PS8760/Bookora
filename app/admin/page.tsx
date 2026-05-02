@@ -4,6 +4,8 @@ import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { Users, Building2, Calendar, IndianRupee } from "lucide-react";
+import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
 
 function Skeleton({ className }: { className?: string }) {
   return <div className={`skeleton rounded-xl ${className}`} />;
@@ -36,8 +38,11 @@ interface AdminData {
 }
 
 export default function AdminDashboard() {
-  const fetcher = (url: string) => fetch(url).then((res) => res.json());
-  const { data: responseData, error, mutate } = useSWR("/api/dashboard/admin", fetcher, { refreshInterval: 5000 });
+  const { data: responseData, error, mutate } = useSWR(
+    "/api/dashboard/admin",
+    jsonFetcher,
+    dashboardSWRConfig
+  );
   const loading = !responseData && !error;
   const data = responseData?.data;
 
@@ -76,10 +81,10 @@ export default function AdminDashboard() {
           {loading
             ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)
             : [
-                { label: "Total Users",    value: data?.stats.totalUsers ?? 0,    change: `+${data?.stats.weekUsers ?? 0} this week`, icon: "👥", accent: "#724A6A", bg: "#F5EDF4" },
-                { label: "Organisers",     value: data?.stats.totalOrganisers ?? 0, change: `${data?.stats.publishedServices ?? 0} services published`, icon: "🏢", accent: "#0277BD", bg: "#E1F5FE" },
-                { label: "Total Bookings", value: data?.stats.totalBookings ?? 0, change: `+${data?.stats.monthBookings ?? 0} this month`, icon: "📅", accent: "#2E7D32", bg: "#E8F5E9" },
-                { label: "Revenue",        value: `₹${(data?.stats.revenue ?? 0).toLocaleString("en-IN")}`, change: `${data?.stats.confirmedBookings ?? 0} confirmed`, icon: "💰", accent: "#D4A017", bg: "#FFF8E1" },
+                { label: "Total Users",    value: data?.stats.totalUsers ?? 0,    change: `+${data?.stats.weekUsers ?? 0} this week`, icon: <Users size={20} />, accent: "#724A6A", bg: "#F5EDF4" },
+                { label: "Organisers",     value: data?.stats.totalOrganisers ?? 0, change: `${data?.stats.publishedServices ?? 0} services published`, icon: <Building2 size={20} />, accent: "#0277BD", bg: "#E1F5FE" },
+                { label: "Total Bookings", value: data?.stats.totalBookings ?? 0, change: `+${data?.stats.monthBookings ?? 0} this month`, icon: <Calendar size={20} />, accent: "#2E7D32", bg: "#E8F5E9" },
+                { label: "Revenue",        value: `₹${(data?.stats.revenue ?? 0).toLocaleString("en-IN")}`, change: `${data?.stats.confirmedBookings ?? 0} confirmed`, icon: <IndianRupee size={20} />, accent: "#D4A017", bg: "#FFF8E1" },
               ].map((s, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-[#E8E0D0] p-4 shadow-[0_2px_8px_rgba(114,74,106,0.06)]">
                   <div className="flex items-center justify-between mb-3">

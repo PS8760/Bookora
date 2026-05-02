@@ -4,6 +4,8 @@ import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import { CalendarDays, Clock, CheckCircle2, XCircle, Inbox, Calendar } from "lucide-react";
+import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   confirmed: { label: "Confirmed", bg: "#E8F5E9", text: "#2E7D32" },
@@ -27,8 +29,11 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 export default function DashboardPage() {
-  const fetcher = (url: string) => fetch(url).then((res) => res.json());
-  const { data: responseData, error, mutate } = useSWR("/api/dashboard/customer", fetcher, { refreshInterval: 5000 });
+  const { data: responseData, error, mutate } = useSWR(
+    "/api/dashboard/customer",
+    jsonFetcher,
+    dashboardSWRConfig
+  );
   const loading = !responseData && !error;
   const data = responseData?.data;
 
@@ -75,10 +80,10 @@ export default function DashboardPage() {
                 <Skeleton key={i} className="h-24" />
               ))
             : [
-                { label: "Total Bookings", value: data?.stats.total ?? 0, icon: "📅", color: "#F5EDF4", accent: "#724A6A" },
-                { label: "Upcoming",       value: data?.stats.upcoming ?? 0, icon: "⏰", color: "#FFF3E0", accent: "#E65100" },
-                { label: "Completed",      value: data?.stats.completed ?? 0, icon: "✅", color: "#E8F5E9", accent: "#2E7D32" },
-                { label: "Cancelled",      value: data?.stats.cancelled ?? 0, icon: "❌", color: "#FFEBEE", accent: "#C62828" },
+                { label: "Total Bookings", value: data?.stats.total ?? 0, icon: <CalendarDays size={24} />, color: "#F5EDF4", accent: "#724A6A" },
+                { label: "Upcoming",       value: data?.stats.upcoming ?? 0, icon: <Clock size={24} />, color: "#FFF3E0", accent: "#E65100" },
+                { label: "Completed",      value: data?.stats.completed ?? 0, icon: <CheckCircle2 size={24} />, color: "#E8F5E9", accent: "#2E7D32" },
+                { label: "Cancelled",      value: data?.stats.cancelled ?? 0, icon: <XCircle size={24} />, color: "#FFEBEE", accent: "#C62828" },
               ].map((s, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-[#E8E0D0] p-4 shadow-[0_2px_8px_rgba(114,74,106,0.06)]">
                   <div className="flex items-center justify-between mb-2">
@@ -110,7 +115,7 @@ export default function DashboardPage() {
             </div>
           ) : bookings.length === 0 ? (
             <div className="text-center py-16">
-              <span className="text-5xl mb-3 block">📭</span>
+              <span className="text-5xl mb-3 block text-[#8A8AAA] flex justify-center"><Inbox size={48} /></span>
               <p className="font-semibold text-[#1A1A2E] mb-1">No {tab} bookings</p>
               <p className="text-sm text-[#8A8AAA]">
                 {tab === "upcoming" ? (
@@ -126,7 +131,7 @@ export default function DashboardPage() {
                   <div key={b.id} className="flex items-center gap-4 p-4 hover:bg-[#FFFBE9] transition-colors">
                     <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                       style={{ background: iconColors[idx % iconColors.length] }}>
-                      {b.icon || "📅"}
+                      {b.icon || <Calendar size={20} />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-[#1A1A2E] truncate">{b.service}</p>

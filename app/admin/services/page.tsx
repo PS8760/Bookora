@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { Clock, IndianRupee, Calendar, Users, Building2, AlertTriangle } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Service {
@@ -145,7 +146,7 @@ function ServiceDrawer({
               className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
               style={{ background: colors.bg }}
             >
-              {service.icon || "📅"}
+              {service.icon || <Calendar size={32} />}
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-bold text-lg text-[#1A1A2E] leading-tight">{service.title}</h3>
@@ -196,10 +197,10 @@ function ServiceDrawer({
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: "Duration", value: `${service.durationMinutes} min`, icon: "⏱" },
-              { label: "Price", value: formatPrice(service), icon: "💰" },
-              { label: "Bookings", value: service.bookingCount, icon: "📅" },
-              { label: "Max / Slot", value: service.maxPerSlot, icon: "👥" },
+              { label: "Duration", value: `${service.durationMinutes} min`, icon: <Clock size={20} className="mx-auto" /> },
+              { label: "Price", value: formatPrice(service), icon: <IndianRupee size={20} className="mx-auto" /> },
+              { label: "Bookings", value: service.bookingCount, icon: <Calendar size={20} className="mx-auto" /> },
+              { label: "Max / Slot", value: service.maxPerSlot, icon: <Users size={20} className="mx-auto" /> },
             ].map((item) => (
               <div key={item.label} className="bg-[#FFFBE9] rounded-xl p-3 border border-[#E8E0D0] text-center">
                 <p className="text-lg mb-0.5">{item.icon}</p>
@@ -527,13 +528,13 @@ export default function AdminServicesPage() {
             </div>
           ) : error ? (
             <div className="text-center py-16">
-              <span className="text-4xl mb-3 block">⚠️</span>
+              <span className="text-4xl mb-3 block text-[#C62828] flex justify-center"><AlertTriangle size={48} /></span>
               <p className="text-sm text-[#C62828] mb-3">Failed to load services.</p>
               <button onClick={() => mutate()} className="btn-primary text-sm py-2 px-4">Retry</button>
             </div>
           ) : services.length === 0 ? (
             <div className="text-center py-16">
-              <span className="text-4xl mb-3 block">🏢</span>
+              <span className="text-4xl mb-3 block text-[#8A8AAA] flex justify-center"><Building2 size={48} /></span>
               <p className="text-sm text-[#8A8AAA]">
                 {search || categoryFilter !== "all" || publishedFilter !== "all"
                   ? "No services match your filters."
@@ -567,7 +568,7 @@ export default function AdminServicesPage() {
                               className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
                               style={{ background: colors.bg }}
                             >
-                              {s.icon || "📅"}
+                              {s.icon || <Calendar size={20} />}
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-[#1A1A2E] whitespace-nowrap">{s.title}</p>

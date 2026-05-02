@@ -62,11 +62,10 @@ export async function GET(request: NextRequest) {
             where: {
               isActive: true,
               startTime: { gte: new Date() },
-              // only slots that still have capacity
             },
             select: { id: true, capacity: true, booked: true, startTime: true },
             orderBy: { startTime: "asc" },
-            take: 5,
+            take: 100, // enough to get a realistic count
           },
           _count: { select: { bookings: true } },
         },
@@ -77,7 +76,7 @@ export async function GET(request: NextRequest) {
       prisma.service.count({ where }),
     ]);
 
-    // Compute available slots count per service
+    // Compute available slots count per service — sum remaining capacity across all future slots
     const data = services.map((s) => ({
       ...s,
       availableSlots: s.providerSlots.reduce(

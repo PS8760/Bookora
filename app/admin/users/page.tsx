@@ -6,7 +6,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { LIVE_REFRESH_MS, jsonFetcher } from "@/lib/realtime";
 
 const roleConfig: Record<string, { bg: string; text: string }> = {
-  customer:  { bg: "#E1F5FE", text: "#0277BD" },
+  customer:  { bg: "#FFFBE9", text: "#724A6A" },
   organiser: { bg: "#F5EDF4", text: "#724A6A" },
   admin:     { bg: "#FFF8E1", text: "#D4A017" },
 };
@@ -272,7 +272,7 @@ export default function AdminUsersPage() {
                             </button>
                             <button
                               onClick={() => openUserEditor(u.id)}
-                              className="text-xs font-semibold px-2 py-1 rounded-lg bg-[#E1F5FE] text-[#0277BD] hover:bg-[#B3E5FC] transition-colors"
+                              className="text-xs font-semibold px-2 py-1 rounded-lg bg-[#FFFBE9] border border-[#E8E0D0] text-[#724A6A] hover:bg-[#F5EDF4] transition-colors"
                             >
                               Edit Profile
                             </button>

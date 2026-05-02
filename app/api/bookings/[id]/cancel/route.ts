@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { invalidateSlotCacheForSlot } from "@/lib/slot-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function POST(
     const result = await prisma.$transaction(async (tx) => {
       // Lock the booking row
       const bookings = await tx.$queryRaw<any[]>`
-        SELECT b.*, ps."serviceId", ps.id as "slotId"
+        SELECT b.*, ps."serviceId", ps.id as "slotId", ps."startTime" as "slotStartTime"
         FROM bookings b
         JOIN provider_slots ps ON b."providerSlotId" = ps.id
         WHERE b.id = ${id}::uuid
@@ -79,7 +80,7 @@ export async function POST(
         select: { id: true, status: true, cancelledAt: true },
       });
 
-      return updated;
+      return { ...updated, serviceId: booking.serviceId, slotStartTime: booking.slotStartTime };
     });
 
     await prisma.auditLog.create({
@@ -92,6 +93,11 @@ export async function POST(
         userAgent: request.headers.get("user-agent") ?? undefined,
       },
     });
+
+    // Invalidate slot cache so next poll reflects restored capacity immediately
+    if (result.serviceId && result.slotStartTime) {
+      invalidateSlotCacheForSlot(result.serviceId, new Date(result.slotStartTime));
+    }
 
     return NextResponse.json({ data: result, message: "Booking cancelled" });
   } catch (err: any) {

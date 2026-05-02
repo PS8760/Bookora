@@ -3,13 +3,13 @@ import BookoraLogo from "@/components/BookoraLogo";
 
 export default function Footer() {
   return (
-    <footer className="bg-[#1A1A2E] text-[#FFFBE9] mt-auto">
-      <div className="page-container py-16 px-6 sm:px-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 md:gap-14">
+    <footer className="bg-[#FFFBE9] text-[#1A1A2E] mt-auto border-t border-[#E8E0D0]">
+      <div className="page-container py-16">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 md:gap-16">
           {/* Brand */}
           <div className="md:col-span-1">
-            <BookoraLogo height={96} className="mb-5 brightness-0 invert" />
-            <p className="text-sm text-[#FFFBE9]/60 leading-relaxed">
+            <BookoraLogo height={48} className="mb-5" />
+            <p className="text-sm text-[#4A4A6A] leading-relaxed">
               The perfect booking system for modern businesses. Schedule smarter, serve better.
             </p>
             <div className="flex gap-2.5 mt-4">
@@ -17,7 +17,7 @@ export default function Footer() {
                 <a
                   key={s}
                   href="#"
-                  className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-[#724A6A] transition-colors text-xs font-bold"
+                  className="w-8 h-8 rounded-lg bg-[#F5EDF4] flex items-center justify-center hover:bg-[#724A6A] hover:text-white transition-all text-xs font-bold text-[#724A6A]"
                   aria-label={s}
                 >
                   {s[0].toUpperCase()}
@@ -28,11 +28,11 @@ export default function Footer() {
 
           {/* Product */}
           <div>
-            <h4 className="font-semibold text-sm mb-3 text-[#D4A017]">Product</h4>
+            <h4 className="font-semibold text-sm mb-3 text-[#724A6A]">Product</h4>
             <ul className="space-y-2">
               {["Features", "Services", "Integrations"].map((item) => (
                 <li key={item}>
-                  <Link href="#" className="text-sm text-[#FFFBE9]/60 hover:text-[#FFFBE9] transition-colors">
+                  <Link href="#" className="text-sm text-[#4A4A6A] hover:text-[#724A6A] transition-colors">
                     {item}
                   </Link>
                 </li>
@@ -42,11 +42,11 @@ export default function Footer() {
 
           {/* Company */}
           <div>
-            <h4 className="font-semibold text-sm mb-3 text-[#D4A017]">Company</h4>
+            <h4 className="font-semibold text-sm mb-3 text-[#724A6A]">Company</h4>
             <ul className="space-y-2">
               {["About", "Blog", "Careers", "Contact"].map((item) => (
                 <li key={item}>
-                  <Link href="#" className="text-sm text-[#FFFBE9]/60 hover:text-[#FFFBE9] transition-colors">
+                  <Link href="#" className="text-sm text-[#4A4A6A] hover:text-[#724A6A] transition-colors">
                     {item}
                   </Link>
                 </li>
@@ -56,11 +56,11 @@ export default function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="font-semibold text-sm mb-3 text-[#D4A017]">Legal</h4>
+            <h4 className="font-semibold text-sm mb-3 text-[#724A6A]">Legal</h4>
             <ul className="space-y-2">
               {["Privacy Policy", "Terms of Service", "Cookie Policy", "Security"].map((item) => (
                 <li key={item}>
-                  <Link href="#" className="text-sm text-[#FFFBE9]/60 hover:text-[#FFFBE9] transition-colors">
+                  <Link href="#" className="text-sm text-[#4A4A6A] hover:text-[#724A6A] transition-colors">
                     {item}
                   </Link>
                 </li>
@@ -69,11 +69,11 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs text-[#FFFBE9]/40">
+        <div className="mt-14 pt-7 border-t border-[#E8E0D0] flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-[#8A8AAA]">
             © {new Date().getFullYear()} Bookora. All rights reserved.
           </p>
-          <p className="text-xs text-[#FFFBE9]/40">
+          <p className="text-xs text-[#8A8AAA]">
             Built with ❤️ for the Odoo Hackathon
           </p>
         </div>

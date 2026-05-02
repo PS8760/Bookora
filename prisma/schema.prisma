@@ -307,6 +307,7 @@ model ProviderSlot {
   resource  Resource? @relation(fields: [resourceId], references: [id])
   bookings  Booking[]
 
+  @@unique([serviceId, startTime, endTime, userId, resourceId])
   @@index([serviceId, startTime, endTime])
   @@index([userId, startTime])
   @@index([resourceId, startTime])

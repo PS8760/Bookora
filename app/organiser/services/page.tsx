@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import OrganiserLayout from "@/components/organiser/OrganiserLayout";
+import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
 
 const CATEGORY_COLORS: Record<string, string> = {
   Health: "#E8F5E9", Beauty: "#FFF8E1", Fitness: "#FFF3E0",
@@ -37,8 +38,8 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 export default function OrganiserServicesPage() {
   const { data, error, mutate } = useSWR(
     "/api/appointments?limit=50",
-    fetcher,
-    { refreshInterval: 10000 }
+    jsonFetcher,
+    dashboardSWRConfig
   );
 
   const loading = !data && !error;

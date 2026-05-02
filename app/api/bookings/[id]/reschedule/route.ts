@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { invalidateSlotCacheForSlot } from "@/lib/slot-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export async function POST(
         where: { id: bookingId },
         include: {
           service: true,
-          providerSlot: true,
+          providerSlot: { select: { id: true, startTime: true, serviceId: true, capacity: true, booked: true } },
         },
       });
 
@@ -160,11 +161,19 @@ export async function POST(
         },
       });
 
-      return updatedBooking;
+      return { updatedBooking, oldSlotStartTime: booking.providerSlot.startTime };
     });
 
+    // Invalidate slot cache for BOTH old and new slot dates
+    // Old slot: capacity was freed
+    invalidateSlotCacheForSlot(result.updatedBooking.serviceId, new Date(result.oldSlotStartTime));
+    // New slot: capacity was consumed
+    if (result.updatedBooking.providerSlot?.startTime) {
+      invalidateSlotCacheForSlot(result.updatedBooking.serviceId, new Date(result.updatedBooking.providerSlot.startTime));
+    }
+
     return NextResponse.json(
-      { data: result, message: "Booking rescheduled successfully" },
+      { data: result.updatedBooking, message: "Booking rescheduled successfully" },
       { status: 200 }
     );
   } catch (error: any) {

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import useSWR from "swr";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { dashboardSWRConfig } from "@/lib/realtime";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Booking {

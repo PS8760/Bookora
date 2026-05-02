@@ -54,7 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </svg>
         </button>
         <Link href="/" className="flex items-center gap-2">
-          <BookoraLogo height={96} linked={false} />
+          <BookoraLogo height={48} linked={false} />
         </Link>
         <div className="flex-1" />
         <div className="flex items-center gap-3">

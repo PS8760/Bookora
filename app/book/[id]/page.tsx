@@ -1,14 +1,27 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { useParams, useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
+import { etagFetcher, clearETagCache, SLOT_REFRESH_MS } from "@/lib/realtime";
+import { 
+  Calendar, 
+  ChevronLeft, 
+  Lock, 
+  Check, 
+  Frown, 
+  Clock, 
+  Users, 
+  Phone, 
+  Mail, 
+  FileText,
+  AlertCircle
+} from "lucide-react";
 
 const STEPS = ["Select Slot", "Your Details", "Confirm"];
-
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const today = new Date();
 
 function getDates() {
@@ -46,9 +59,11 @@ interface Question {
 interface Slot {
   id: string;
   time: string;
+  startUtc?: string;
   available: boolean;
   remainingCapacity: number;
   maxCapacity: number;
+  version?: number;
   providerId?: string;
   providerName?: string;
 }
@@ -77,13 +92,20 @@ export default function BookingPage() {
   const [serviceError, setServiceError]   = useState("");
 
   // Slots data
-  const [slots, setSlots]                 = useState<Slot[]>([]);
-  const [slotsLoading, setSlotsLoading]   = useState(false);
-  const [slotsError, setSlotsError]       = useState("");
+  const [slots, setSlots]               = useState<Slot[]>([]);
+  const [prevSlots, setPrevSlots]       = useState<Record<string, number>>({});
+  const [updatedSlotIds, setUpdatedSlotIds] = useState<Set<string>>(new Set());
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError]     = useState("");
+
+  // Refs for polling — stable, no re-render on change
+  const intervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isHiddenRef     = useRef(false);
+  const selectedDateRef = useRef<Date | null>(null);
 
   const dates = getDates();
 
-  // Fetch service details
+  // ── Service fetch ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!params.id) return;
     setServiceLoading(true);
@@ -91,69 +113,109 @@ export default function BookingPage() {
     fetch(`/api/appointments/${params.id}${query}`)
       .then((r) => r.json())
       .then((j) => {
-        if (j.data) {
-          setService(j.data);
-        } else {
-          setServiceError(j.error?.message ?? "Service not found.");
-        }
+        if (j.data) setService(j.data);
+        else setServiceError(j.error?.message ?? "Service not found.");
       })
       .catch(() => setServiceError("Failed to load service."))
       .finally(() => setServiceLoading(false));
   }, [params.id, shareToken]);
 
-  // Fetch slots when date changes
-  const fetchSlots = useCallback(
-    async (date: Date) => {
-      if (!params.id) return;
-      setSlotsLoading(true);
-      setSlotsError("");
+  // ── Smart slot polling ─────────────────────────────────────────────────────
+  // Uses ETag-aware fetcher: sends If-None-Match, skips JSON parse on 304.
+  // Pauses when the browser tab is hidden to save bandwidth and DB load.
+  // Resumes immediately when the tab becomes visible again.
+  const pollSlots = useCallback(
+    async (date: Date, isInitial = false) => {
+      if (!params.id || isHiddenRef.current) return;
+      if (isInitial) { setSlotsLoading(true); setSlotsError(""); }
+
       const dateStr = date.toISOString().slice(0, 10);
+      const query   = new URLSearchParams({ date: dateStr });
+      if (shareToken) query.set("share", shareToken);
+      const url = `/api/appointments/${params.id}/slots?${query.toString()}`;
+
       try {
-        const query = new URLSearchParams({ date: dateStr });
-        if (shareToken) query.set("share", shareToken);
-        const res = await fetch(`/api/appointments/${params.id}/slots?${query.toString()}`);
-        const j = await res.json();
+        const j = await etagFetcher<{ data?: Slot[] }>(url);
         if (j.data) {
+          // Detect changes for pulse animation
+          const newUpdatedIds = new Set<string>();
+          j.data.forEach((slot: Slot) => {
+            const prevRemaining = prevSlots[slot.id];
+            if (prevRemaining !== undefined && prevRemaining !== slot.remainingCapacity) {
+              newUpdatedIds.add(slot.id);
+            }
+          });
+
+          if (newUpdatedIds.size > 0) {
+            setUpdatedSlotIds(newUpdatedIds);
+            setTimeout(() => setUpdatedSlotIds(new Set()), 1000); // Clear pulse after 1s
+          }
+
+          // Update prevSlots map
+          const nextPrevSlots: Record<string, number> = {};
+          j.data.forEach((s: Slot) => { nextPrevSlots[s.id] = s.remainingCapacity; });
+          setPrevSlots(nextPrevSlots);
+
           setSlots(j.data);
-        } else {
-          setSlotsError(j.error?.message ?? "Could not load slots.");
+          setSlotsError("");
+          // Validate selected slot against fresh data — deselect if taken
+          setSelectedSlot((prev) => {
+            if (!prev) return prev;
+            const fresh = j.data!.find((s) => s.id === prev.id);
+            if (!fresh || fresh.remainingCapacity < 1) return null;
+            if (fresh.remainingCapacity !== prev.remainingCapacity) return fresh;
+            return prev;
+          });
+        }
+      } catch (err) {
+        if (isInitial) {
+          setSlotsError(err instanceof Error ? err.message : "Failed to load available times.");
           setSlots([]);
         }
-      } catch {
-        setSlotsError("Failed to load available times.");
-        setSlots([]);
+        // Background poll errors are silent — keep showing existing slots
       } finally {
-        setSlotsLoading(false);
+        if (isInitial) setSlotsLoading(false);
       }
     },
     [params.id, shareToken]
   );
 
+  // Start/stop polling when selected date changes OR when step changes
+  // Only poll on step 0 — no need to poll while user fills form or reviews
   useEffect(() => {
-    if (!selectedDate) return;
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!selectedDate || step !== 0) return;
 
+    selectedDateRef.current = selectedDate;
     setSelectedSlot(null);
-    fetchSlots(selectedDate);
-    const interval = window.setInterval(() => {
-      fetchSlots(selectedDate);
-    }, 5000);
+    pollSlots(selectedDate, true);
 
-    return () => window.clearInterval(interval);
-  }, [selectedDate, fetchSlots]);
+    intervalRef.current = setInterval(() => {
+      if (selectedDateRef.current) pollSlots(selectedDateRef.current);
+    }, SLOT_REFRESH_MS);
 
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [selectedDate, step, pollSlots]);
+
+  // Pause polling when tab is hidden, resume immediately when visible
+  useEffect(() => {
+    const onVisibility = () => {
+      isHiddenRef.current = document.hidden;
+      if (!document.hidden && selectedDateRef.current) {
+        pollSlots(selectedDateRef.current, false);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [pollSlots]);
+
+  // Keep capacity within available range when slots update
   useEffect(() => {
     if (!selectedSlot) return;
-
-    const freshSlot = slots.find((slot) => slot.id === selectedSlot.id);
-    if (!freshSlot || !freshSlot.available || freshSlot.remainingCapacity < capacity) {
-      setSelectedSlot(null);
-    } else if (
-      freshSlot.remainingCapacity !== selectedSlot.remainingCapacity ||
-      freshSlot.maxCapacity !== selectedSlot.maxCapacity
-    ) {
-      setSelectedSlot(freshSlot);
+    if (capacity > selectedSlot.remainingCapacity) {
+      setCapacity(Math.max(1, selectedSlot.remainingCapacity));
     }
-  }, [capacity, selectedSlot, slots]);
+  }, [selectedSlot, capacity]);
 
   // Auto-fill form from session
   useEffect(() => {
@@ -183,6 +245,7 @@ export default function BookingPage() {
             providerId: selectedSlot.providerId ?? null,
             capacityRequested: capacity,
             idempotencyKey: uuidv4(),
+            slotVersion: selectedSlot.version ?? undefined,
             formAnswers: {
               name: form.name,
               email: form.email,
@@ -202,8 +265,33 @@ export default function BookingPage() {
       });
       const j = await res.json();
       if (!res.ok) {
-        setBookingError(j.error?.message ?? "Booking failed. Please try again.");
-        if (selectedDate) await fetchSlots(selectedDate);
+        const errorCode = j.error?.code;
+        const errorMsg = j.error?.message ?? "Booking failed. Please try again.";
+
+        // Race condition recovery: slot was taken between selection and submit
+        if (errorCode === "CAPACITY_EXCEEDED" || errorCode === "SLOT_PAST") {
+          setBookingError(
+            errorCode === "CAPACITY_EXCEEDED"
+              ? "This slot was just taken! We've refreshed available times — please pick another."
+              : "This slot has passed. Please choose a different time."
+          );
+          setSelectedSlot(null);
+          setStep(0); // Take user back to slot selection
+          // Force refresh slots
+          if (selectedDate) {
+            const dateStr = selectedDate.toISOString().slice(0, 10);
+            clearETagCache(`/api/appointments/${params.id}/slots?date=${dateStr}`);
+            pollSlots(selectedDate, true);
+          }
+        } else {
+          setBookingError(errorMsg);
+          // Clear ETag cache so next poll gets fresh slot data
+          if (selectedDate) {
+            const dateStr = selectedDate.toISOString().slice(0, 10);
+            clearETagCache(`/api/appointments/${params.id}/slots?date=${dateStr}`);
+            pollSlots(selectedDate, false);
+          }
+        }
         return;
       }
       setConfirmedBooking(j.data);
@@ -235,10 +323,12 @@ export default function BookingPage() {
     return (
       <div className="min-h-screen bg-[#FFFBE9] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
-          <span className="text-5xl mb-4 block">😕</span>
-          <h2 className="text-xl font-bold text-[#1A1A2E] mb-2">Service not found</h2>
-          <p className="text-sm text-[#4A4A6A] mb-5">{serviceError}</p>
-          <Link href="/services" className="btn-primary py-2.5 px-6 rounded-xl">Browse Services</Link>
+          <div className="w-20 h-20 rounded-full bg-[#FFEBEE] flex items-center justify-center mx-auto mb-6">
+            <Frown size={48} className="text-[#C62828]" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#1A1A2E] mb-2">Service not found</h2>
+          <p className="text-sm text-[#4A4A6A] mb-8 leading-relaxed">{serviceError}</p>
+          <Link href="/services" className="btn-primary py-3 px-8 rounded-xl shadow-lg">Browse Services</Link>
         </div>
       </div>
     );
@@ -363,14 +453,12 @@ export default function BookingPage() {
       <div className="bg-[#FFF3C4]/40 border-b border-[#E8E0D0] py-6">
         <div className="page-container">
           <div className="flex items-center gap-3 mb-4">
-            <Link href="/services" className="text-sm text-[#724A6A] hover:underline flex items-center gap-1">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-              Services
+            <Link href="/services" className="text-sm text-[#724A6A] hover:underline flex items-center gap-1 font-medium transition-colors">
+              <ChevronLeft size={16} />
+              Back to Services
             </Link>
-            <span className="text-[#8A8AAA]">/</span>
-            <span className="text-sm text-[#4A4A6A]">{service?.title ?? "Book Appointment"}</span>
+            <span className="text-[#D4B8CF]">/</span>
+            <span className="text-sm text-[#4A4A6A] font-medium">{service?.title ?? "Book Appointment"}</span>
           </div>
 
           {/* Progress steps */}
@@ -379,7 +467,7 @@ export default function BookingPage() {
               <div key={i} className="flex items-center gap-2">
                 <div className={`flex items-center gap-2 ${i <= step ? "text-[#724A6A]" : "text-[#8A8AAA]"}`}>
                   <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                       i < step
                         ? "bg-[#724A6A] text-white"
                         : i === step
@@ -387,7 +475,7 @@ export default function BookingPage() {
                         : "bg-[#E8E0D0] text-[#8A8AAA]"
                     }`}
                   >
-                    {i < step ? "✓" : i + 1}
+                    {i < step ? <Check size={14} /> : i + 1}
                   </div>
                   <span className="text-sm font-medium hidden sm:block">{s}</span>
                 </div>
@@ -449,7 +537,15 @@ export default function BookingPage() {
                 {/* Time slots */}
                 {selectedDate && (
                   <div>
-                    <p className="text-sm font-semibold text-[#4A4A6A] mb-3">Available Times</p>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-semibold text-[#4A4A6A]">Available Times</p>
+                      {!slotsLoading && slots.length > 0 && (
+                        <span className="flex items-center gap-1.5 text-[10px] text-[#2E7D32] font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#2E7D32] animate-pulse" />
+                          Live
+                        </span>
+                      )}
+                    </div>
 
                     {slotsLoading && (
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -476,17 +572,21 @@ export default function BookingPage() {
                             key={slot.id}
                             disabled={!slot.available || slot.remainingCapacity < 1}
                             onClick={() => setSelectedSlot(slot)}
-                            className={`py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-all ${
+                            className={`py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-all relative overflow-hidden ${
+                              updatedSlotIds.has(slot.id) ? "slot-pulse" : ""
+                            } ${
                               !slot.available || slot.remainingCapacity < 1
                                 ? "border-[#F0EAD8] bg-[#F9F5F0] text-[#C0B8B0] cursor-not-allowed line-through"
                                 : selectedSlot?.id === slot.id
-                                ? "border-[#724A6A] bg-[#724A6A] text-white"
-                                : "border-[#E8E0D0] bg-[#FFFBE9] text-[#4A4A6A] hover:border-[#724A6A] hover:text-[#724A6A]"
+                                ? "border-[#724A6A] bg-[#724A6A] text-white shadow-md transform scale-[1.02]"
+                                : "border-[#E8E0D0] bg-[#FFFBE9] text-[#4A4A6A] hover:border-[#724A6A] hover:text-[#724A6A] hover:bg-white"
                             }`}
                           >
                             {slot.time}
                             {slot.remainingCapacity > 0 && slot.remainingCapacity <= 3 && (
-                              <span className="block text-[9px] mt-0.5 opacity-70">{slot.remainingCapacity} left</span>
+                              <span className={`block text-[9px] mt-0.5 opacity-70 ${selectedSlot?.id === slot.id ? "text-white" : "text-[#C62828] font-bold"}`}>
+                                {slot.remainingCapacity} left
+                              </span>
                             )}
                           </button>
                         ))}
@@ -739,12 +839,15 @@ export default function BookingPage() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl border border-[#E8E0D0] p-5 shadow-[0_2px_12px_rgba(114,74,106,0.06)] sticky top-24">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-[#F5EDF4] flex items-center justify-center text-2xl">
-                  {service?.icon ?? "📅"}
+                <div className="w-12 h-12 rounded-xl bg-[#F5EDF4] flex items-center justify-center text-2xl text-[#724A6A]">
+                  {service?.icon || <Calendar size={24} />}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#1A1A2E] text-sm">{service?.title ?? "—"}</h3>
-                  <p className="text-xs text-[#8A8AAA]">{service?.organiser?.name ?? "—"}</p>
+                  <h3 className="font-semibold text-[#1A1A2E] text-sm leading-tight">{service?.title ?? "—"}</h3>
+                  <p className="text-xs text-[#8A8AAA] flex items-center gap-1 mt-0.5">
+                    <Users size={12} />
+                    {service?.organiser?.name ?? "—"}
+                  </p>
                 </div>
               </div>
               <div className="divider mb-4" />

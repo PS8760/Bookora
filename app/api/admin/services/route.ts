@@ -183,6 +183,36 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // ── Auto-create a default weekly schedule (Mon–Fri, 09:00–18:00) ──────────
+    // This ensures the service has bookable slots immediately after creation.
+    // The organiser can edit the schedule later via the services page.
+    const DEFAULT_DAYS = [1, 2, 3, 4, 5]; // Monday–Friday
+    const START_MINUTE = 9 * 60;           // 09:00 → 540 minutes
+    const END_MINUTE   = 18 * 60;          // 18:00 → 1080 minutes
+
+    const schedule = await prisma.schedule.create({
+      data: {
+        serviceId: service.id,
+        type: "WEEKLY",
+        weeklyRules: {
+          create: DEFAULT_DAYS.map((day) => ({
+            dayOfWeek: day,
+            startMinute: START_MINUTE,
+            endMinute: END_MINUTE,
+          })),
+        },
+      },
+    });
+
+    // Generate slots for the next 60 days
+    try {
+      const { generateSlots } = await import("@/lib/slots");
+      await generateSlots(service.id);
+    } catch (slotErr) {
+      // Non-fatal — slots can be regenerated later when the service is published
+      console.error("Slot generation after admin service create (non-fatal):", slotErr);
+    }
+
     return NextResponse.json({ data: service }, { status: 201 });
   } catch (error) {
     console.error("POST /api/admin/services error:", error);

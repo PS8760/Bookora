@@ -4,6 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import OrganiserLayout from "@/components/organiser/OrganiserLayout";
+import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   confirmed: { label: "Confirmed", bg: "#E8F5E9", text: "#2E7D32" },
@@ -27,8 +28,11 @@ interface OrgData {
 }
 
 export default function OrganiserDashboard() {
-  const fetcher = (url: string) => fetch(url).then((res) => res.json());
-  const { data: responseData, error, mutate } = useSWR("/api/dashboard/organiser", fetcher, { refreshInterval: 5000 });
+  const { data: responseData, error, mutate } = useSWR(
+    "/api/dashboard/organiser",
+    jsonFetcher,
+    dashboardSWRConfig
+  );
   const loading = !responseData && !error;
   const data = responseData?.data;
 

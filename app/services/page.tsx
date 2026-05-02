@@ -90,21 +90,21 @@ function ServicesContent() {
   return (
     <div className="min-h-screen bg-[#FFFBE9] pt-20">
       {/* Header */}
-      <div className="bg-[#FFF3C4]/40 border-b border-[#E8E0D0] py-14">
+      <div className="py-12">
         <div className="page-container">
-          <h1 className="text-3xl sm:text-4xl font-bold text-[#1A1A2E] mb-3">
+          <h1 className="text-3xl sm:text-4xl font-bold text-[#1A1A2E] mb-2">
             Browse <span className="gradient-brand-text">Services</span>
           </h1>
           <p className="text-[#4A4A6A] text-base">
-            {isLoading ? "Loading..." : `${total} services available · Consistent live catalog`}
+            {isLoading ? "Loading..." : `${total} service${total !== 1 ? "s" : ""} available · Book instantly`}
           </p>
         </div>
       </div>
 
-      <div className="page-container py-10">
+      <div className="page-container py-8 sm:py-12">
         {/* Search + Sort */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-7">
-          <div className="flex items-center gap-2 flex-1 border border-[#E8E0D0] rounded-xl bg-white px-4 h-12">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="flex items-center gap-2 flex-1 border border-[#E8E0D0] rounded-xl bg-white px-4 h-11 shadow-[0_1px_4px_rgba(114,74,106,0.04)]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8AAA" strokeWidth="2">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
@@ -123,18 +123,18 @@ function ServicesContent() {
             )}
           </div>
           <select
-            className="input-base h-12 w-full sm:w-52 cursor-pointer"
+            className="input-base h-11 w-full sm:w-48 cursor-pointer text-sm"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
           >
             <option value="createdAt">Sort: Newest</option>
-            <option value="price">Sort: Price Low-High</option>
+            <option value="price">Sort: Price Low–High</option>
             <option value="title">Sort: A–Z</option>
           </select>
         </div>
 
         {/* Category pills */}
-        <div className="flex gap-2 flex-wrap mb-8">
+        <div className="flex gap-2 flex-wrap mb-7">
           {categories.map((c) => (
             <button
               key={c}
@@ -142,7 +142,7 @@ function ServicesContent() {
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                 selectedCategory === c
                   ? "bg-[#724A6A] text-[#FFFBE9] shadow-[0_2px_8px_rgba(114,74,106,0.3)]"
-                  : "bg-[#FFFBE9] text-[#4A4A6A] border border-[#E8E0D0] hover:border-[#724A6A] hover:text-[#724A6A]"
+                  : "bg-white text-[#4A4A6A] border border-[#E8E0D0] hover:border-[#724A6A] hover:text-[#724A6A] shadow-[0_1px_3px_rgba(114,74,106,0.04)]"
               }`}
             >
               {c}
@@ -152,9 +152,9 @@ function ServicesContent() {
 
         {/* Results count */}
         {!isLoading && !error && (
-          <p className="text-sm text-[#8A8AAA] mb-5">
+          <p className="text-sm text-[#8A8AAA] mb-6">
             Showing <strong className="text-[#1A1A2E]">{services.length}</strong>
-            {total > services.length ? ` of ${total}` : ""} services
+            {total > services.length ? ` of ${total}` : ""} service{services.length !== 1 ? "s" : ""}
           </p>
         )}
 
@@ -198,16 +198,16 @@ function ServicesContent() {
 
         {/* Grid */}
         {!isLoading && !error && services.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {services.map((s) => {
               const colors = getColors(s.category);
               return (
                 <div
                   key={s.id}
-                  className="card-hover bg-white rounded-2xl border border-[#E8E0D0] shadow-[0_2px_12px_rgba(114,74,106,0.06)] overflow-hidden"
+                  className="card-hover bg-white rounded-2xl border border-[#E8E0D0] shadow-[0_2px_12px_rgba(114,74,106,0.06)] overflow-hidden flex flex-col"
                 >
-                  <div className="p-5 pb-4">
-                    <div className="flex items-start gap-3 mb-4">
+                  <div className="p-6 pb-4 flex-1">
+                    <div className="flex items-start gap-4 mb-4">
                       <div
                         className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
                         style={{ background: colors.bg }}
@@ -218,29 +218,18 @@ function ServicesContent() {
                         <h3 className="font-semibold text-[#1A1A2E] text-base leading-tight">{s.title}</h3>
                         <p className="text-xs text-[#8A8AAA] mt-0.5 truncate">{s.organiser.name}</p>
                         {s.category && (
-                          <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                            <span
-                              className="badge text-[10px]"
-                              style={{ background: colors.bg, color: colors.accent }}
-                            >
-                              {s.category}
-                            </span>
-                            <span
-                              className={`badge text-[10px] ${
-                                s.isPublished
-                                  ? "bg-[#E8F5E9] text-[#2E7D32]"
-                                  : "bg-[#FFF3E0] text-[#E65100]"
-                              }`}
-                            >
-                              {s.isPublished ? "Published" : "Draft"}
-                            </span>
-                          </div>
+                          <span
+                            className="badge mt-2 text-[10px]"
+                            style={{ background: colors.bg, color: colors.accent }}
+                          >
+                            {s.category}
+                          </span>
                         )}
                       </div>
                     </div>
 
                     {s.description && (
-                      <p className="text-xs text-[#4A4A6A] leading-relaxed mb-3 line-clamp-2">
+                      <p className="text-xs text-[#4A4A6A] leading-relaxed mb-4 line-clamp-2">
                         {s.description}
                       </p>
                     )}
@@ -259,35 +248,32 @@ function ServicesContent() {
                         {s._count.bookings} booked
                       </span>
                       <span
-                        className={`ml-auto font-medium text-xs ${
+                        className={`ml-auto font-semibold text-xs ${
                           s.availableSlots === 0
                             ? "text-[#C62828]"
-                            : s.availableSlots <= 3
+                            : s.availableSlots <= 5
                             ? "text-[#E65100]"
                             : "text-[#2E7D32]"
                         }`}
                       >
                         {s.availableSlots === 0
                           ? "Fully booked"
-                          : s.availableSlots <= 3
-                          ? `Only ${s.availableSlots} left!`
+                          : s.availableSlots <= 5
+                          ? `${s.availableSlots} left`
                           : `${s.availableSlots} slots`}
                       </span>
                     </div>
                   </div>
 
-                  <div className="px-5 py-3 border-t border-[#F0EAD8] flex items-center justify-between">
+                  <div className="px-6 py-4 border-t border-[#F0EAD8] flex items-center justify-between bg-[#FDFAF3]">
                     <span className="font-bold text-[#724A6A] text-base">{formatPrice(s)}</span>
                     {isLoggedIn && s.isPublished ? (
-                      <Link
-                        href={`/book/${s.id}`}
-                        className="btn-primary text-xs py-2 px-4 rounded-lg"
-                      >
+                      <Link href={`/book/${s.id}`} className="btn-primary text-xs py-2 px-4 rounded-lg">
                         Book Now
                       </Link>
                     ) : isLoggedIn && !s.isPublished ? (
                       <span className="text-xs py-2 px-4 rounded-lg border border-[#E8E0D0] text-[#8A8AAA] font-semibold">
-                        Not bookable yet
+                        Coming soon
                       </span>
                     ) : (
                       <Link

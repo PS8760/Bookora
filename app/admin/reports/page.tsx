@@ -3,6 +3,7 @@
 import { useState } from "react";
 import useSWR from "swr";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { CalendarDays, CheckCircle2, XCircle, IndianRupee } from "lucide-react";
 import { REPORT_REFRESH_MS, jsonFetcher } from "@/lib/realtime";
 
 function Skeleton({ className }: { className?: string }) {
@@ -79,10 +80,10 @@ export default function AdminReportsPage() {
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-28" />)
             : [
-                { label: "Total Bookings",  value: overview?.totalBookings ?? 0,  icon: "📅", accent: "#724A6A", bg: "#F5EDF4" },
-                { label: "Confirmed",       value: overview?.confirmed ?? 0,       icon: "✅", accent: "#2E7D32", bg: "#E8F5E9" },
-                { label: "Cancelled",       value: overview?.cancelled ?? 0,       icon: "❌", accent: "#C62828", bg: "#FFEBEE" },
-                { label: "Revenue (₹)",     value: `₹${(overview?.revenue ?? 0).toLocaleString("en-IN")}`, icon: "💰", accent: "#D4A017", bg: "#FFF8E1" },
+                { label: "Total Bookings",  value: overview?.totalBookings ?? 0,  icon: <CalendarDays size={20} />, accent: "#724A6A", bg: "#F5EDF4" },
+                { label: "Confirmed",       value: overview?.confirmed ?? 0,       icon: <CheckCircle2 size={20} />, accent: "#2E7D32", bg: "#E8F5E9" },
+                { label: "Cancelled",       value: overview?.cancelled ?? 0,       icon: <XCircle size={20} />, accent: "#C62828", bg: "#FFEBEE" },
+                { label: "Revenue (₹)",     value: `₹${(overview?.revenue ?? 0).toLocaleString("en-IN")}`, icon: <IndianRupee size={20} />, accent: "#D4A017", bg: "#FFF8E1" },
               ].map((s, i) => (
                 <div key={i} className="bg-white rounded-2xl border border-[#E8E0D0] p-4 shadow-[0_2px_8px_rgba(114,74,106,0.06)]">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl mb-3" style={{ background: s.bg }}>{s.icon}</div>
