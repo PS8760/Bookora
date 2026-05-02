@@ -15,9 +15,12 @@ export const auth = betterAuth({
     },
     async sendResetPasswordEmail(data) {
       const { user, url } = data;
-      console.log(`[AUTH] Password reset requested for ${user.email}`);
-      console.log(`[AUTH] Reset Link: ${url}`);
-      // In production, you would use a mailer like Resend or Nodemailer here
+      try {
+        console.log(`[AUTH] Password reset requested for ${user.email}`);
+        console.log(`[AUTH] Reset Link: ${url}`);
+      } catch (err) {
+        console.error("[AUTH] Error in sendResetPasswordEmail callback:", err);
+      }
     },
   },
   socialProviders: {
@@ -62,5 +65,6 @@ export const auth = betterAuth({
     process.env.BETTER_AUTH_URL,
     process.env.NEXT_PUBLIC_SITE_URL,
     "http://localhost:3000",
+    "http://127.0.0.1:3000",
   ].filter((o): o is string => !!o),
 });
