@@ -15,8 +15,8 @@ export default function HomePage() {
       <StatsSection />
       <FeaturesSection />
       <HowItWorksSection />
-      <ServicesSection />
       <FeaturedServices />
+      <ServicesSection />
       <TestimonialsSection />
       <CTASection />
     </>

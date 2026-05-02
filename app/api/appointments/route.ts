@@ -90,7 +90,9 @@ export async function GET(request: NextRequest) {
 
     // If public view, filter out fully booked services
     if (role === "customer" || (role === "organiser" && scope !== "own")) {
-      data = data.filter((s) => s.availableSlots > 0);
+      // "Fully booked" means it has slots but 0 capacity left.
+      // If it has NO slots at all, we still show it (it's just not scheduled yet).
+      data = data.filter((s) => s.providerSlots.length === 0 || s.availableSlots > 0);
     }
 
     return NextResponse.json({

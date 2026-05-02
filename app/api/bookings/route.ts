@@ -109,13 +109,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // All authenticated users can book appointments (customers, organisers, admins)
     const user = session.user as SessionUser;
-    if (getRole(user) !== "customer") {
-      return NextResponse.json(
-        { error: { code: "FORBIDDEN", message: "Only customers can book appointments" } },
-        { status: 403 }
-      );
-    }
 
     const body = await request.json();
     const slotId            = String(body.slotId ?? "");

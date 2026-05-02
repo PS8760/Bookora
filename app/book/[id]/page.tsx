@@ -583,11 +583,15 @@ export default function BookingPage() {
                             }`}
                           >
                             {slot.time}
-                            {slot.remainingCapacity > 0 && slot.remainingCapacity <= 3 && (
-                              <span className={`block text-[9px] mt-0.5 opacity-70 ${selectedSlot?.id === slot.id ? "text-white" : "text-[#C62828] font-bold"}`}>
-                                {slot.remainingCapacity} left
-                              </span>
-                            )}
+                            <span className={`block text-[9px] mt-0.5 opacity-70 ${
+                              selectedSlot?.id === slot.id 
+                                ? "text-white" 
+                                : slot.remainingCapacity <= 2 
+                                ? "text-[#C62828] font-bold" 
+                                : "text-[#724A6A]"
+                            }`}>
+                              {slot.remainingCapacity} spots left
+                            </span>
                           </button>
                         ))}
                       </div>

@@ -56,7 +56,7 @@ export default function FeaturedServices() {
         )}
 
         {/* Grid */}
-        {!isLoading && !error && services.length > 0 && (
+        {!isLoading && !error && services.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {services.map((s: any, i: number) => {
               const colors = getColors(s.category);
@@ -115,6 +115,12 @@ export default function FeaturedServices() {
                 </div>
               );
             })}
+          </div>
+        ) : !isLoading && !error && (
+          <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-[#E8E0D0]">
+             <Inbox size={48} className="mx-auto text-[#8A8AAA] mb-4" />
+             <p className="text-[#4A4A6A] font-medium">No featured services available at the moment.</p>
+             <Link href="/services" className="text-[#724A6A] text-sm hover:underline mt-2 inline-block">Browse all services</Link>
           </div>
         )}
 
