@@ -301,6 +301,10 @@ export async function POST(request: NextRequest) {
         // Convert amount (Decimal) to paise (Integer) for Stripe
         const amountInPaise = Math.round(Number((booking as any).service.paymentAmount) * 100);
         
+        if (!stripe) {
+          throw new Error("STRIPE_NOT_CONFIGURED");
+        }
+        
         const intent = await stripe.paymentIntents.create({
           amount: amountInPaise,
           currency: (booking as any).service.currency.toLowerCase(),
