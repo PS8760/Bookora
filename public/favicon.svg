@@ -1,0 +1,10 @@
+<svg width="256" height="256" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" rx="24" fill="#FFFBE9"/>
+  <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle"
+        font-family="Poppins, Inter, sans-serif"
+        font-size="72"
+        font-weight="600"
+        fill="#724A6A">
+    B
+  </text>
+</svg>

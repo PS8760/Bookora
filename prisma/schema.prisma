@@ -1,0 +1,492 @@
+// schema.prisma — v3 (Production Grade, better-auth compatible)
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+  output          = "./generated/prisma"
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgcrypto, pg_trgm]
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum Role {
+  customer
+  organiser
+  admin
+}
+
+enum AppointmentType {
+  USER_BASED
+  RESOURCE_BASED
+}
+
+enum ScheduleType {
+  WEEKLY
+  FLEXIBLE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  RESCHEDULED
+  COMPLETED
+  NO_SHOW
+}
+
+enum AssignmentMode {
+  AUTOMATIC
+  MANUAL
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum QuestionType {
+  TEXT
+  MULTIPLE_CHOICE
+  BOOLEAN
+  NUMBER
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum AuditAction {
+  CREATED
+  UPDATED
+  CANCELLED
+  CONFIRMED
+  RESCHEDULED
+  PAYMENT_RECEIVED
+  PAYMENT_REFUNDED
+}
+
+// ─────────────────────────────────────────
+// BETTER-AUTH REQUIRED TABLES
+// These are managed by better-auth. Do NOT rename fields.
+// ─────────────────────────────────────────
+
+model user {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Custom fields (additionalFields in auth.ts)
+  role      String  @default("customer")
+  isActive  Boolean @default(true)
+  timezone  String  @default("UTC")
+  deletedAt DateTime?
+
+  // Relations to better-auth tables
+  sessions  session[]
+  accounts  account[]
+
+  // App relations
+  providerProfile  ProviderProfile?
+  customerBookings Booking[]        @relation("CustomerBookings")
+  providerBookings Booking[]        @relation("ProviderBookings")
+  organisedServices Service[]
+  providerSlots    ProviderSlot[]
+  notifications    Notification[]
+  auditLogs        AuditLog[]
+
+  @@index([email])
+  @@index([role, isActive])
+  @@map("user")
+}
+
+model session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      user     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  user      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("account")
+}
+
+model verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+// ─────────────────────────────────────────
+// PROVIDER PROFILE (organiser/admin metadata)
+// ─────────────────────────────────────────
+
+model ProviderProfile {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @unique
+  bio       String?
+  avatarUrl String?
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("provider_profiles")
+}
+
+// ─────────────────────────────────────────
+// RESOURCES (for RESOURCE_BASED appointments)
+// ─────────────────────────────────────────
+
+model Resource {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  providerSlots ProviderSlot[]
+  bookings      Booking[]
+
+  @@index([isActive])
+  @@map("resources")
+}
+
+// ─────────────────────────────────────────
+// SERVICES (the bookable appointment types)
+// ─────────────────────────────────────────
+
+model Service {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organiserId     String          // FK to user.id (String, not UUID)
+  title           String
+  description     String?
+  category        String?         // e.g. "Health", "Beauty", "Fitness"
+  icon            String?         // emoji or icon identifier
+  durationMinutes Int
+  type            AppointmentType @default(USER_BASED)
+  isPublished     Boolean         @default(false)
+  shareToken      String?         @unique
+  advancePayment  Boolean         @default(false)
+  paymentAmount   Decimal?        @db.Decimal(10, 2)
+  currency        String          @default("INR")
+  manualConfirm   Boolean         @default(false)
+  assignmentMode  AssignmentMode  @default(AUTOMATIC)
+  maxPerSlot      Int             @default(1)
+  venue           String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+
+  organiser     user          @relation(fields: [organiserId], references: [id])
+  schedules     Schedule[]
+  questions     Question[]
+  providerSlots ProviderSlot[]
+  bookings      Booking[]
+
+  @@index([organiserId, isPublished])
+  @@index([deletedAt])
+  @@index([category])
+  @@map("services")
+}
+
+// ─────────────────────────────────────────
+// SCHEDULES & AVAILABILITY RULES
+// ─────────────────────────────────────────
+
+model Schedule {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceId String       @db.Uuid
+  type      ScheduleType
+  createdAt DateTime     @default(now())
+
+  service      Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  weeklyRules  WeeklyRule[]
+  flexibleDays FlexibleDay[]
+
+  @@index([serviceId])
+  @@map("schedules")
+}
+
+model WeeklyRule {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scheduleId  String   @db.Uuid
+  dayOfWeek   Int      // 0=Sunday … 6=Saturday
+  startMinute Int      // minutes since midnight, e.g. 540 = 09:00
+  endMinute   Int      // e.g. 1020 = 17:00
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, dayOfWeek])
+  @@map("weekly_rules")
+}
+
+model FlexibleDay {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scheduleId  String   @db.Uuid
+  date        DateTime @db.Date
+  startMinute Int
+  endMinute   Int
+
+  schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, date])
+  @@map("flexible_days")
+}
+
+// ─────────────────────────────────────────
+// PROVIDER SLOTS
+// ─────────────────────────────────────────
+
+model ProviderSlot {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceId  String   @db.Uuid
+  userId     String?  // FK to user.id (String)
+  resourceId String?  @db.Uuid
+  startTime  DateTime
+  endTime    DateTime
+  capacity   Int      @default(1)
+  booked     Int      @default(0)
+  version    Int      @default(0) // optimistic lock
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  service   Service   @relation(fields: [serviceId], references: [id])
+  user      user?     @relation(fields: [userId], references: [id])
+  resource  Resource? @relation(fields: [resourceId], references: [id])
+  bookings  Booking[]
+
+  @@index([serviceId, startTime, endTime])
+  @@index([userId, startTime])
+  @@index([resourceId, startTime])
+  @@index([serviceId, isActive, startTime])
+  @@map("provider_slots")
+}
+
+// ─────────────────────────────────────────
+// BOOKINGS
+// ─────────────────────────────────────────
+
+model Booking {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customerId     String        // FK to user.id (String)
+  serviceId      String        @db.Uuid
+  providerSlotId String        @db.Uuid
+  userId         String?       // assigned provider user
+  resourceId     String?       @db.Uuid
+  status         BookingStatus @default(PENDING)
+  paymentStatus  PaymentStatus @default(UNPAID)
+  confirmedAt    DateTime?
+  cancelledAt    DateTime?
+  completedAt    DateTime?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  customer     user           @relation("CustomerBookings", fields: [customerId], references: [id])
+  service      Service        @relation(fields: [serviceId], references: [id])
+  providerSlot ProviderSlot   @relation(fields: [providerSlotId], references: [id])
+  provider     user?          @relation("ProviderBookings", fields: [userId], references: [id])
+  resource     Resource?      @relation(fields: [resourceId], references: [id])
+  answers      BookingAnswer[]
+  payments     Payment[]
+  reschedules  RescheduleLog[]
+  auditLogs    AuditLog[]
+  notifications Notification[]
+
+  @@unique([providerSlotId, customerId])
+  @@index([customerId, status])
+  @@index([providerSlotId, status])
+  @@index([serviceId, status])
+  @@index([userId, status])
+  @@index([createdAt])
+  @@map("bookings")
+}
+
+model RescheduleLog {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId       String   @db.Uuid
+  fromSlotId      String   @db.Uuid
+  toSlotId        String   @db.Uuid
+  rescheduledById String   // FK to user.id
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@map("reschedule_logs")
+}
+
+// ─────────────────────────────────────────
+// QUESTIONS & ANSWERS
+// ─────────────────────────────────────────
+
+model Question {
+  id        String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  serviceId String       @db.Uuid
+  text      String
+  type      QuestionType
+  required  Boolean      @default(false)
+  order     Int
+  createdAt DateTime     @default(now())
+
+  service Service          @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  options QuestionOption[]
+  answers BookingAnswer[]
+
+  @@index([serviceId, order])
+  @@map("questions")
+}
+
+model QuestionOption {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionId String @db.Uuid
+  label      String
+  order      Int
+
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId, order])
+  @@map("question_options")
+}
+
+model BookingAnswer {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId        String  @db.Uuid
+  questionId       String  @db.Uuid
+  answerText       String?
+  selectedOptionId String? @db.Uuid
+
+  booking  Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@unique([bookingId, questionId])
+  @@index([bookingId])
+  @@map("booking_answers")
+}
+
+// ─────────────────────────────────────────
+// PAYMENTS
+// ─────────────────────────────────────────
+
+model Payment {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId       String        @db.Uuid
+  amount          Decimal       @db.Decimal(10, 2)
+  currency        String        @default("INR")
+  status          PaymentStatus @default(PENDING)
+  gatewayProvider String?       // "razorpay", "stripe", etc.
+  gatewayRef      String?       @unique
+  idempotencyKey  String        @unique
+  paidAt          DateTime?
+  refundedAt      DateTime?
+  failureReason   String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────
+
+model Notification {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String
+  bookingId     String?             @db.Uuid
+  channel       NotificationChannel
+  status        NotificationStatus  @default(QUEUED)
+  subject       String?
+  body          String
+  sentAt        DateTime?
+  failureReason String?
+  createdAt     DateTime            @default(now())
+
+  user    user     @relation(fields: [userId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([userId, status])
+  @@index([bookingId])
+  @@index([createdAt, status])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorId   String
+  bookingId String?     @db.Uuid
+  action    AuditAction
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime    @default(now())
+
+  actor   user     @relation(fields: [actorId], references: [id])
+  booking Booking? @relation(fields: [bookingId], references: [id])
+
+  @@index([actorId])
+  @@index([bookingId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

@@ -1,0 +1,238 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --color-cream:        #FFFBE9;
+  --color-cream-dark:   #FFF3C4;
+  --color-cream-deeper: #FFE88A;
+  --color-brand:        #724A6A;
+  --color-brand-dark:   #5A3854;
+  --color-brand-light:  #9B6B92;
+  --color-brand-muted:  #F5EDF4;
+  --color-gold:         #D4A017;
+  --color-gold-light:   #F5D76E;
+  --color-success:      #2E7D32;
+  --color-success-bg:   #E8F5E9;
+  --color-danger:       #C62828;
+  --color-danger-bg:    #FFEBEE;
+  --color-warning:      #E65100;
+  --color-warning-bg:   #FFF3E0;
+  --color-info:         #0277BD;
+  --color-info-bg:      #E1F5FE;
+  --color-text:         #1A1A2E;
+  --color-text-soft:    #4A4A6A;
+  --color-text-muted:   #8A8AAA;
+  --color-border:       #E8E0D0;
+  --color-border-light: #F0EAD8;
+
+  --font-sans: 'Poppins', system-ui, sans-serif;
+
+  --shadow-soft:   0 2px 12px rgba(114, 74, 106, 0.08);
+  --shadow-card:   0 4px 24px rgba(114, 74, 106, 0.10);
+  --shadow-hover:  0 8px 32px rgba(114, 74, 106, 0.18);
+  --shadow-modal:  0 16px 64px rgba(114, 74, 106, 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #FFFBE9;
+  color: #1A1A2E;
+  font-family: 'Poppins', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #FFFBE9; }
+::-webkit-scrollbar-thumb { background: #D4B8CF; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #724A6A; }
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid #724A6A;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in-up   { animation: fadeInUp 0.6s ease forwards; }
+.animate-fade-in      { animation: fadeIn 0.4s ease forwards; }
+.animate-slide-right  { animation: slideInRight 0.5s ease forwards; }
+.animate-float        { animation: float 3s ease-in-out infinite; }
+.animate-pulse-soft   { animation: pulse-soft 2s ease-in-out infinite; }
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #FFF3C4 25%, #FFFBE9 50%, #FFF3C4 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Glass card */
+.glass {
+  background: rgba(255, 251, 233, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(212, 160, 23, 0.2);
+}
+
+/* Brand gradient */
+.gradient-brand {
+  background: linear-gradient(135deg, #724A6A 0%, #9B6B92 50%, #D4A017 100%);
+}
+.gradient-brand-text {
+  background: linear-gradient(135deg, #724A6A, #D4A017);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Cream gradient backgrounds */
+.bg-cream-gradient {
+  background: linear-gradient(160deg, #FFFBE9 0%, #FFF3C4 50%, #FFFBE9 100%);
+}
+.bg-cream-radial {
+  background: radial-gradient(ellipse at 60% 40%, #FFF3C4 0%, #FFFBE9 70%);
+}
+
+/* Card hover lift */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(114, 74, 106, 0.16);
+}
+
+/* Input base */
+.input-base {
+  width: 100%;
+  background: #FFFBE9;
+  border: 1.5px solid #E8E0D0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: 'Poppins', sans-serif;
+  color: #1A1A2E;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+.input-base::placeholder { color: #8A8AAA; }
+.input-base:focus {
+  border-color: #724A6A;
+  box-shadow: 0 0 0 3px rgba(114, 74, 106, 0.12);
+}
+
+/* Button base */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #724A6A;
+  color: #FFFBE9;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+}
+.btn-primary:hover {
+  background: #5A3854;
+  box-shadow: 0 4px 16px rgba(114, 74, 106, 0.3);
+}
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: #724A6A;
+  border: 1.5px solid #724A6A;
+  border-radius: 10px;
+  padding: 10px 22px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+.btn-outline:hover {
+  background: #724A6A;
+  color: #FFFBE9;
+}
+.btn-outline:active { transform: scale(0.98); }
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #E8E0D0, transparent);
+}
+
+/* Page container */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Section spacing */
+.section { padding: 80px 0; }
+.section-sm { padding: 48px 0; }
