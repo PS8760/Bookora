@@ -56,6 +56,7 @@ export async function GET(
 
     if (
       role === "organiser" &&
+      !service.isPublished &&
       service.organiserId !== session.user.id
     ) {
       return NextResponse.json(

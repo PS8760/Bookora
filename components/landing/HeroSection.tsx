@@ -84,16 +84,18 @@ export default function HeroSection() {
           </div>
 
           {/* Right — Graphic Element */}
-          <div className="sr-item-right relative flex items-center justify-center" style={{ "--sr-delay": "0.3" } as React.CSSProperties}>
-            <div className="relative w-full mx-auto animate-float">
+          <div className="sr-item-right relative flex items-center justify-center lg:justify-end" style={{ "--sr-delay": "0.3" } as React.CSSProperties}>
+            <div className="relative w-[110%] lg:w-[125%] -right-[5%] lg:-right-[15%] animate-float-glow drop-shadow-[0_20px_50px_rgba(114,74,106,0.15)]">
               <Image
                 src="/Graphic_Element.png"
                 alt="Bookora scheduling illustration"
-                width={1536}
-                height={1024}
+                width={2000}
+                height={1400}
                 className="w-full h-auto object-contain"
                 priority
               />
+              {/* Decorative Glow behind the image */}
+              <div className="absolute inset-0 bg-gradient-to-tr from-[#724A6A]/10 to-transparent blur-3xl -z-10 rounded-full animate-pulse-soft" />
             </div>
           </div>
         </div>

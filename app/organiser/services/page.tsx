@@ -42,7 +42,10 @@ export default function OrganiserServicesPage() {
     dashboardSWRConfig
   );
 
-  const loading = !data && !error;
+  const { data: sessionData } = useSWR("/api/auth/get-session", fetcher);
+  const currentUserId = sessionData?.user?.id;
+
+  const loading = (!data && !error) || !sessionData;
   const services: Service[] = data?.data ?? [];
 
   const [toggling, setToggling] = useState<string | null>(null);
@@ -181,12 +184,15 @@ export default function OrganiserServicesPage() {
         {/* Service list */}
         {!loading && !error && services.length > 0 && (
           <div className="grid grid-cols-1 gap-4">
-            {services.map((svc) => {
+            {services.map((svc: any) => {
               const color = CATEGORY_COLORS[svc.category ?? ""] ?? CATEGORY_COLORS.default;
+              const isOwned = svc.organiserId === currentUserId;
               return (
                 <div
                   key={svc.id}
-                  className="bg-white rounded-2xl border border-[#E8E0D0] p-5 shadow-[0_2px_12px_rgba(114,74,106,0.06)] flex flex-col sm:flex-row sm:items-center gap-4"
+                  className={`bg-white rounded-2xl border p-5 shadow-[0_2px_12px_rgba(114,74,106,0.06)] flex flex-col sm:flex-row sm:items-center gap-4 transition-opacity ${
+                    !isOwned ? "opacity-90 border-[#D4A017]/20" : "border-[#E8E0D0]"
+                  }`}
                 >
                   {/* Icon */}
                   <div
@@ -209,6 +215,11 @@ export default function OrganiserServicesPage() {
                       >
                         {svc.isPublished ? "Published" : "Draft"}
                       </span>
+                      {!isOwned && (
+                        <span className="badge text-[10px] bg-[#FFF8E1] text-[#D4A017] border border-[#D4A017]/20">
+                          Shared Service (by {svc.organiser?.name ?? "Other"})
+                        </span>
+                      )}
                       {svc.category && (
                         <span className="badge text-[10px] bg-[#F5EDF4] text-[#724A6A]">
                           {svc.category}
@@ -217,56 +228,65 @@ export default function OrganiserServicesPage() {
                     </div>
                     <div className="flex flex-wrap gap-4 mt-1.5 text-xs text-[#8A8AAA]">
                       <span>⏱ {svc.durationMinutes} min</span>
-                      <span>📅 {svc._count.bookings} bookings</span>
-                      <span>🕐 {svc.availableSlots} slots available</span>
+                      <span>📅 {svc._count?.bookings ?? 0} bookings</span>
+                      <span>🕐 {svc.availableSlots ?? 0} slots available</span>
                       <span>👥 Max {svc.maxPerSlot}/slot</span>
                       <span className="font-semibold text-[#724A6A]">{formatPrice(svc)}</span>
                     </div>
-                    {svc.description && (
-                      <p className="text-xs text-[#4A4A6A] mt-1.5 line-clamp-1">{svc.description}</p>
-                    )}
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-                    <Link
-                      href={`/organiser/services/${svc.id}/edit`}
-                      className="btn-outline text-xs py-1.5 px-3 rounded-lg"
-                    >
-                      Edit
-                    </Link>
+                    {isOwned ? (
+                      <>
+                        <Link
+                          href={`/organiser/services/${svc.id}/edit`}
+                          className="btn-outline text-xs py-1.5 px-3 rounded-lg"
+                        >
+                          Edit
+                        </Link>
 
-                    <button
-                      onClick={() => handleTogglePublish(svc)}
-                      disabled={toggling === svc.id}
-                      className={`text-xs py-1.5 px-3 rounded-lg font-semibold transition-colors disabled:opacity-50 ${
-                        svc.isPublished
-                          ? "bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFE0B2]"
-                          : "bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#C8E6C9]"
-                      }`}
-                    >
-                      {toggling === svc.id
-                        ? "..."
-                        : svc.isPublished
-                        ? "Unpublish"
-                        : "Publish"}
-                    </button>
+                        <button
+                          onClick={() => handleTogglePublish(svc)}
+                          disabled={toggling === svc.id}
+                          className={`text-xs py-1.5 px-3 rounded-lg font-semibold transition-colors disabled:opacity-50 ${
+                            svc.isPublished
+                              ? "bg-[#FFF3E0] text-[#E65100] hover:bg-[#FFE0B2]"
+                              : "bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#C8E6C9]"
+                          }`}
+                        >
+                          {toggling === svc.id
+                            ? "..."
+                            : svc.isPublished
+                            ? "Unpublish"
+                            : "Publish"}
+                        </button>
 
-                    <button
-                      onClick={() => handleCopyShareLink(svc)}
-                      disabled={!svc.isPublished || sharing === svc.id}
-                      className="text-xs py-1.5 px-3 rounded-lg bg-[#F5EDF4] text-[#724A6A] hover:bg-[#E8D5E4] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {sharing === svc.id ? "..." : copied === svc.id ? "✓ Copied!" : "Share Link"}
-                    </button>
+                        <button
+                          onClick={() => handleCopyShareLink(svc)}
+                          disabled={!svc.isPublished || sharing === svc.id}
+                          className="text-xs py-1.5 px-3 rounded-lg bg-[#F5EDF4] text-[#724A6A] hover:bg-[#E8D5E4] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {sharing === svc.id ? "..." : copied === svc.id ? "✓ Copied!" : "Share Link"}
+                        </button>
 
-                    <button
-                      onClick={() => handleDelete(svc.id)}
-                      disabled={deleting === svc.id}
-                      className="text-xs py-1.5 px-3 rounded-lg bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFCDD2] transition-colors font-semibold disabled:opacity-50"
-                    >
-                      {deleting === svc.id ? "..." : "Delete"}
-                    </button>
+                        <button
+                          onClick={() => handleDelete(svc.id)}
+                          disabled={deleting === svc.id}
+                          className="text-xs py-1.5 px-3 rounded-lg bg-[#FFEBEE] text-[#C62828] hover:bg-[#FFCDD2] transition-colors font-semibold disabled:opacity-50"
+                        >
+                          {deleting === svc.id ? "..." : "Delete"}
+                        </button>
+                      </>
+                    ) : (
+                      <Link
+                        href={`/book/${svc.id}`}
+                        target="_blank"
+                        className="btn-primary text-xs py-1.5 px-4 rounded-lg bg-[#D4A017] hover:bg-[#B38812]"
+                      >
+                        Preview Booking
+                      </Link>
+                    )}
                   </div>
                 </div>
               );

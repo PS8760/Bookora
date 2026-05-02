@@ -25,7 +25,11 @@ export async function GET(request: NextRequest) {
     const where: any = { deletedAt: null };
 
     if (role === "organiser") {
-      where.organiserId = session!.user.id;
+      // Organisers see their own services (even drafts) AND all other published services
+      where.OR = [
+        { organiserId: session!.user.id },
+        { isPublished: true }
+      ];
     } else if (role === "admin") {
       // admins see everything — no extra filter
     } else if (!showAll) {
