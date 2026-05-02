@@ -5,7 +5,6 @@ import useSWR from "swr";
 import Link from "next/link";
 import OrganiserLayout from "@/components/organiser/OrganiserLayout";
 import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
-import ChatWindow from "@/components/chat/ChatWindow";
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   confirmed: { label: "Confirmed", bg: "#E8F5E9", text: "#2E7D32" },
@@ -36,8 +35,6 @@ export default function OrganiserDashboard() {
   );
   const loading = !responseData && !error;
   const data = responseData?.data;
-
-  const [chatBookingId, setChatBookingId] = useState<string | null>(null);
 
   const handleConfirm = async (bookingId: string) => {
     await fetch(`/api/bookings/${bookingId}/confirm`, { method: "POST" });
@@ -159,8 +156,6 @@ export default function OrganiserDashboard() {
                                 className="text-[10px] font-bold text-[#C62828] px-1.5 py-0.5 rounded bg-[#FFEBEE] hover:bg-[#FFCDD2] transition-colors">✗</button>
                             </>
                           )}
-                          <button onClick={() => setChatBookingId(b.id)}
-                            className="text-[10px] font-bold text-[#724A6A] px-1.5 py-0.5 rounded bg-[#F5EDF4] hover:bg-[#E8D5E4] transition-colors">💬</button>
                         </div>
                       </div>
                     </div>
@@ -171,19 +166,6 @@ export default function OrganiserDashboard() {
           </div>
         </div>
       </div>
-
-      {/* Chat Overlay */}
-      {chatBookingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-md animate-in zoom-in-95 duration-200">
-            <ChatWindow 
-              bookingId={chatBookingId}
-              currentUserId={responseData?.data?.user?.id}
-              onClose={() => setChatBookingId(null)}
-            />
-          </div>
-        </div>
-      )}
 
     </OrganiserLayout>
   );

@@ -6,14 +6,14 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import { signOutAndRedirect } from "@/lib/logout-client";
 import BookoraLogo from "@/components/BookoraLogo";
-import ChatSidebarSection from "@/components/chat/ChatSidebarSection";
 
-import { LayoutDashboard, Users, Calendar, Building2, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Building2, BarChart3, MessageSquare } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutDashboard size={20} />, exact: true },
   { href: "/admin/users", label: "Users", icon: <Users size={20} />, exact: false },
   { href: "/admin/bookings", label: "All Bookings", icon: <Calendar size={20} />, exact: false },
+  { href: "/admin/messages", label: "Messages", icon: <MessageSquare size={20} />, exact: false },
   { href: "/admin/services", label: "Services", icon: <Building2 size={20} />, exact: false },
   { href: "/admin/reports", label: "Reports", icon: <BarChart3 size={20} />, exact: false },
 ];
@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
         <aside className={`fixed lg:static top-24 bottom-0 left-0 z-40 w-56 bg-white border-r border-[#E8E0D0] flex flex-col py-4 transition-transform duration-300 h-full ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-          <nav className="flex flex-col gap-1 px-3">
+          <nav className="flex flex-col gap-1 px-3 flex-1">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${item.exact ? pathname === item.href : pathname.startsWith(item.href)
@@ -74,10 +74,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Link>
             ))}
           </nav>
-
-          <div className="flex-1 overflow-y-auto min-h-0">
-            {user?.id && <ChatSidebarSection currentUserId={user.id} />}
-          </div>
 
           <div className="px-3 pt-3 border-t border-[#E8E0D0] flex flex-col gap-1">
             <Link href="/" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#4A4A6A] hover:bg-[#FFFBE9] transition-colors">
