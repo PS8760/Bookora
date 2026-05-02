@@ -245,7 +245,7 @@ function ServicesContent() {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                         </svg>
-                        {s._count.bookings} booked
+                        {s.availableSlots ?? 0} slots available
                       </span>
                       <span
                         className={`ml-auto font-semibold text-xs ${

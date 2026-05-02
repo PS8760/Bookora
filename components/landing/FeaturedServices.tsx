@@ -93,7 +93,7 @@ export default function FeaturedServices() {
                       </span>
                       <span className="flex items-center gap-1.5 text-[10px] text-[#4A4A6A] font-medium">
                         <Users size={12} className="text-[#724A6A]" />
-                        {s._count?.bookings ?? 0}
+                        {s.availableSlots ?? 0} slots
                       </span>
                       {s.category && (
                         <span 

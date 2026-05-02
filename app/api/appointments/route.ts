@@ -80,13 +80,18 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Compute available slots count per service — sum remaining capacity across all future slots
-    const data = services.map((s) => ({
+    let data = services.map((s) => ({
       ...s,
       availableSlots: s.providerSlots.reduce(
         (acc, slot) => acc + Math.max(0, slot.capacity - slot.booked),
         0
       ),
     }));
+
+    // If public view, filter out fully booked services
+    if (role === "customer" || (role === "organiser" && scope !== "own")) {
+      data = data.filter((s) => s.availableSlots > 0);
+    }
 
     return NextResponse.json({
       data,
