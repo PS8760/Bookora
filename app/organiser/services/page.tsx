@@ -37,7 +37,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function OrganiserServicesPage() {
   const { data, error, mutate } = useSWR(
-    "/api/appointments?limit=50",
+    "/api/appointments?limit=50&scope=own",
     jsonFetcher,
     dashboardSWRConfig
   );

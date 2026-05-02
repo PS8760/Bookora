@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const search = searchParams.get("search");
+    const scope = searchParams.get("scope");
     const sort = searchParams.get("sort") || "createdAt";
-    const showAll = searchParams.get("showAll") === "true";
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
     const limit = Math.min(50, parseInt(searchParams.get("limit") || "20"));
     const skip = (page - 1) * limit;
@@ -24,14 +24,16 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = { deletedAt: null };
 
-    if (role === "organiser") {
-      // Organisers see only their own services
+    if (role === "admin") {
+      // admins see everything
+    } else if (role === "organiser" && scope === "own") {
+      // Management view: see own services (including drafts)
       where.organiserId = session!.user.id;
-    } else if (role === "admin") {
-      // admins see everything — no extra filter
-    } else if (!showAll) {
-      // customers (and unauthenticated visitors) see only published services
+    } else {
+      // Public view: customers and organisers see all published services
       where.isPublished = true;
+      // Organisers also want to see their own drafts in the public list? 
+      // Usually no, but they might. For now, let's keep it simple: published only.
     }
 
     if (category && category !== "All") {
