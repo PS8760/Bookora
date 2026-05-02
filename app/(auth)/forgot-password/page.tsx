@@ -16,16 +16,24 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const { error } = await authClient.forgetPassword({
-        email,
-        redirectTo: "/reset-password",
+      // Using manual fetch with detailed logging to debug the empty error object
+      const res = await fetch("/api/auth/forget-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          redirectTo: "/reset-password",
+        }),
       });
 
-      if (error) {
-        console.error("[FORGOT_PASSWORD_ERROR]", error);
-        setError(error.message || "Could not send reset link. Please ensure the email is correct.");
-      } else {
+      console.log(`[FORGOT_PASSWORD_DEBUG] Status: ${res.status}`);
+      const data = await res.json().catch(() => ({}));
+      console.log("[FORGOT_PASSWORD_DEBUG] Response:", data);
+
+      if (res.ok) {
         setSent(true);
+      } else {
+        setError(data?.error?.message || `Error ${res.status}: Failed to send reset link.`);
       }
     } catch (err) {
       console.error("[FORGOT_PASSWORD_CATCH]", err);
