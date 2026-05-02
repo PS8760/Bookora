@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { authClient } from "@/lib/auth-client";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -34,20 +35,19 @@ function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ newPassword: password, token }),
+      const { error } = await authClient.resetPassword({
+        newPassword: password,
+        token: token || "",
       });
 
-      if (res.ok) {
+      if (!error) {
         setSuccess(true);
         setTimeout(() => router.push("/login"), 3000);
       } else {
-        const data = await res.json();
-        setError(data?.error?.message || "Failed to reset password.");
+        setError(error.message || "Failed to reset password.");
       }
-    } catch {
+    } catch (err) {
+      console.error("[RESET_PASSWORD_CATCH]", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);

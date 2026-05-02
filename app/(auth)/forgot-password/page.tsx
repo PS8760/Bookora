@@ -22,11 +22,13 @@ export default function ForgotPasswordPage() {
       });
 
       if (error) {
-        setError(error.message || "Failed to send reset link.");
+        console.error("[FORGOT_PASSWORD_ERROR]", error);
+        setError(error.message || "Could not send reset link. Please ensure the email is correct.");
       } else {
         setSent(true);
       }
-    } catch {
+    } catch (err) {
+      console.error("[FORGOT_PASSWORD_CATCH]", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
