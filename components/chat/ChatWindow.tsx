@@ -26,7 +26,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
   const [sending, setSending] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [loadingSuggestion, setLoadingSuggestion] = useState(false);
-  
+
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: messagesData, mutate } = useSWR(
@@ -111,7 +111,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
       </div>
 
       {/* Messages Area */}
-      <div 
+      <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#FDFCF9]"
         style={{ backgroundImage: "radial-gradient(#E8E0D0 0.5px, transparent 0.5px)", backgroundSize: "20px 20px" }}
@@ -121,16 +121,15 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
             <p className="text-xs text-[#8A8AAA]">Start a conversation...</p>
           </div>
         )}
-        
+
         {messages.map((m) => {
           const isMe = m.senderId === currentUserId;
           return (
             <div key={m.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[80%] rounded-2xl p-3 text-sm shadow-sm ${
-                isMe 
-                  ? "bg-[#724A6A] text-white rounded-tr-none" 
-                  : "bg-white text-[#1A1A2E] border border-[#E8E0D0] rounded-tl-none"
-              }`}>
+              <div className={`max-w-[80%] rounded-2xl p-3 text-sm shadow-sm ${isMe
+                ? "bg-[#724A6A] text-white rounded-tr-none"
+                : "bg-white text-[#1A1A2E] border border-[#E8E0D0] rounded-tl-none"
+                }`}>
                 {!isMe && (
                   <div className="flex items-center gap-2 mb-1.5 opacity-80">
                     <span className="text-[11px] font-bold">{m.sender.name}</span>
@@ -156,7 +155,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
             <p className="text-[10px] text-[#724A6A] font-bold mb-1">AI Suggestion ✨</p>
             <p className="text-xs text-[#4A4A6A] italic">"{suggestion}"</p>
           </div>
-          <button 
+          <button
             onClick={() => handleSendMessage(suggestion)}
             className="bg-[#724A6A] text-white text-[10px] py-1 px-3 rounded-full hover:bg-[#5D3C56] transition-colors"
           >
@@ -167,7 +166,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
 
       {/* Input Area */}
       <div className="p-4 bg-white border-t border-[#E8E0D0] flex items-center gap-2">
-        <button 
+        <button
           onClick={fetchAiSuggestion}
           disabled={!chatId || loadingSuggestion}
           className="w-10 h-10 rounded-full flex items-center justify-center bg-[#F5EDF4] text-[#724A6A] hover:bg-[#E8D5E4] transition-colors disabled:opacity-50"
@@ -175,7 +174,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
         >
           {loadingSuggestion ? "..." : "✨"}
         </button>
-        <input 
+        <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -183,7 +182,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
           placeholder="Type a message..."
           className="flex-1 bg-[#F5F5F5] rounded-full py-2 px-4 text-sm outline-none focus:ring-1 focus:ring-[#724A6A]"
         />
-        <button 
+        <button
           onClick={() => handleSendMessage()}
           disabled={!input.trim() || sending}
           className="w-10 h-10 rounded-full bg-[#724A6A] text-white flex items-center justify-center hover:bg-[#5D3C56] transition-colors disabled:opacity-50"

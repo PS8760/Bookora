@@ -1,10 +1,14 @@
 import Groq from "groq-sdk";
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+const apiKey = process.env.GROQ_API_KEY;
+
+const groq = apiKey ? new Groq({ apiKey }) : null;
 
 export async function generateChatReply(messages: { role: "user" | "assistant"; content: string }[]) {
+  if (!groq) {
+    console.warn("Groq AI: No API key provided, skipping suggestion.");
+    return "";
+  }
   try {
     const completion = await groq.chat.completions.create({
       messages: [
