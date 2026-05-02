@@ -30,7 +30,13 @@ export async function GET(request: NextRequest) {
       prisma.service.findMany({
         where: { organiserId, deletedAt: null },
         include: {
-          _count: { select: { bookings: true } },
+          _count: { 
+            select: { 
+              bookings: {
+                where: { status: { in: ["PENDING", "CONFIRMED"] } }
+              } 
+            } 
+          },
           providerSlots: {
             where: { isActive: true, startTime: { gte: now } },
             select: { capacity: true, booked: true },
@@ -38,15 +44,27 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.booking.count({ where: { service: { organiserId } } }),
+      prisma.booking.count({ 
+        where: { 
+          service: { organiserId },
+          status: { in: ["PENDING", "CONFIRMED"] }
+        } 
+      }),
       prisma.booking.count({
-        where: { service: { organiserId }, createdAt: { gte: startOfMonth } },
+        where: { 
+          service: { organiserId }, 
+          status: { in: ["PENDING", "CONFIRMED"] },
+          createdAt: { gte: startOfMonth } 
+        },
       }),
       prisma.booking.count({
         where: { service: { organiserId }, status: "PENDING" },
       }),
       prisma.booking.findMany({
-        where: { service: { organiserId } },
+        where: { 
+          service: { organiserId },
+          status: { not: "CANCELLED" }
+        },
         include: {
           customer: { select: { id: true, name: true, email: true, image: true } },
           service: { select: { id: true, title: true, icon: true } },

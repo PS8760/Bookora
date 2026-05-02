@@ -70,7 +70,13 @@ export async function GET(request: NextRequest) {
             orderBy: { startTime: "asc" },
             take: 100, // enough to get a realistic count
           },
-          _count: { select: { bookings: true } },
+          _count: { 
+            select: { 
+              bookings: {
+                where: { status: { in: ["PENDING", "CONFIRMED"] } }
+              } 
+            } 
+          },
         },
         orderBy,
         skip,
