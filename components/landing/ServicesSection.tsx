@@ -62,7 +62,7 @@ export default function ServicesSection() {
               Popular Categories
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#1A1A2E]">
-              Browse by <span className="gradient-brand-text">Service</span>
+              Browse by <span className="gradient-brand-text">Category</span>
             </h2>
           </div>
           <div className="sr-item" style={{ "--sr-delay": "0.15" } as React.CSSProperties}>
