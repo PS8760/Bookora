@@ -59,7 +59,7 @@ export default function ChatPageContent({ currentUserId }: { currentUserId: stri
               }}
               className="text-[10px] font-bold bg-[#724A6A] text-white px-3 py-1.5 rounded-lg hover:bg-[#5D3C56] transition-colors"
             >
-              Contact Support
+              Contact Admin
             </button>
           </div>
           <div className="relative">
@@ -130,6 +130,7 @@ export default function ChatPageContent({ currentUserId }: { currentUserId: stri
         {activeChatId ? (
           <div className="w-full h-full">
              <ChatWindow 
+                key={activeChatId}
                 chatId={activeChatId}
                 currentUserId={currentUserId}
                 // No onClose needed here as it's a full panel
@@ -152,6 +153,7 @@ export default function ChatPageContent({ currentUserId }: { currentUserId: stri
       {activeChatId && (
         <div className="fixed inset-0 z-50 md:hidden flex flex-col bg-white animate-in slide-in-from-right duration-300">
            <ChatWindow 
+              key={activeChatId}
               chatId={activeChatId}
               currentUserId={currentUserId}
               onClose={() => setActiveChatId(null)}

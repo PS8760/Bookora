@@ -22,6 +22,11 @@ interface ChatWindowProps {
 
 export default function ChatWindow({ chatId: initialChatId, bookingId, receiverId, currentUserId, onClose }: ChatWindowProps) {
   const [chatId, setChatId] = useState(initialChatId);
+  
+  useEffect(() => {
+    setChatId(initialChatId);
+  }, [initialChatId]);
+
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [suggestion, setSuggestion] = useState<string | null>(null);
@@ -101,7 +106,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
             {partner?.name?.charAt(0) || "C"}
           </div>
           <div>
-            <h3 className="font-semibold text-sm">{partner?.name || "Chat Support"}</h3>
+            <h3 className="font-semibold text-sm">{partner?.name || "Admin"}</h3>
             <p className="text-[10px] opacity-80">{partner?.role || "Support"}</p>
           </div>
         </div>
