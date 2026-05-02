@@ -3,7 +3,7 @@ import BookoraLogo from "@/components/BookoraLogo";
 
 export default function Footer() {
   return (
-    <footer className="bg-[#FFFBE9] text-[#1A1A2E] mt-auto border-t border-[#E8E0D0]">
+    <footer className="bg-[#FFFBE9] text-[#1A1A2E] mt-auto">
       <div className="page-container py-16">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-12 md:gap-16">
           {/* Brand */}
@@ -69,7 +69,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-14 pt-7 border-t border-[#E8E0D0] flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="mt-14 pt-7 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-[#8A8AAA]">
             © {new Date().getFullYear()} Bookora. All rights reserved.
           </p>
