@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import OrganiserLayout from "@/components/organiser/OrganiserLayout";
 
@@ -16,7 +16,11 @@ export default function NewServicePage() {
   const [step, setStep] = useState(0);
   const STEPS = ["Basic Info", "Schedule", "Booking Rules", "Questions"];
 
+  const savingRef = useRef(false);
+
   const handleCreate = async (publish: boolean) => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
       const res = await fetch("/api/appointments", {
@@ -32,15 +36,16 @@ export default function NewServicePage() {
       });
       if (res.ok) {
         router.push("/organiser/services");
+        return; // Prevent resetting saving state while redirecting
       } else {
         const json = await res.json();
         alert(json.error?.message || "Failed to create service.");
       }
     } catch (e) {
       alert("Error creating service.");
-    } finally {
-      setSaving(false);
     }
+    savingRef.current = false;
+    setSaving(false);
   };
 
   return (
