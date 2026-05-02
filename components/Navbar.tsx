@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import BookoraLogo from "@/components/BookoraLogo";
-import { useSession, signOut } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth-client";
+import { signOutAndRedirect } from "@/lib/logout-client";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -30,8 +31,7 @@ export default function Navbar() {
   ];
 
   const handleSignOut = async () => {
-    await signOut();
-    router.push("/");
+    await signOutAndRedirect(router);
   };
 
   return (

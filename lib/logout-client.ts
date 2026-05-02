@@ -1,6 +1,7 @@
 "use client";
 
 import { signOut } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
 
 type RouterLike = {
   replace: (href: string) => void;
@@ -13,8 +14,10 @@ export async function signOutAndRedirect(
 ) {
   try {
     await signOut();
+  } catch (err) {
+    console.error("Sign out failed:", err);
   } finally {
-    router.replace(destination);
-    router.refresh();
+    // Hard redirect to clear everything
+    window.location.href = destination;
   }
 }

@@ -9,11 +9,7 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
-    password: {
-      minLength: 8,
-      maxLength: 128,
-    },
-    async sendResetPasswordEmail(data) {
+    async sendResetPasswordEmail(data: { user: any; url: string }) {
       const { user, url } = data;
       try {
         console.log(`[AUTH] Password reset requested for ${user.email}`);
@@ -27,8 +23,10 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      // NOTE: Ensure your Authorized Redirect URI in Google Cloud Console is exactly:
-      // http://localhost:3000/api/auth/callback/google
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID as string,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
     },
   },
   session: {

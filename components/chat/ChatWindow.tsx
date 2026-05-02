@@ -131,7 +131,14 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
                   ? "bg-[#724A6A] text-white rounded-tr-none" 
                   : "bg-white text-[#1A1A2E] border border-[#E8E0D0] rounded-tl-none"
               }`}>
-                {!isMe && <p className="text-[10px] font-bold mb-1 opacity-60">{m.sender.name}</p>}
+                {!isMe && (
+                  <div className="flex items-center gap-2 mb-1.5 opacity-80">
+                    <span className="text-[11px] font-bold">{m.sender.name}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#F5EDF4] text-[#724A6A] font-medium border border-[#E8D5E4] uppercase tracking-wider">
+                      {m.sender.role}
+                    </span>
+                  </div>
+                )}
                 <p className="leading-relaxed">{m.content}</p>
                 <p className={`text-[9px] mt-1 text-right ${isMe ? "text-white/60" : "text-[#8A8AAA]"}`}>
                   {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
