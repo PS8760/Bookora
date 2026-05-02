@@ -38,7 +38,7 @@ interface AdminData {
 }
 
 export default function AdminDashboard() {
-  const { data: responseData, error, mutate } = useSWR(
+  const { data: responseData, error, mutate } = useSWR<any>(
     "/api/dashboard/admin",
     jsonFetcher,
     dashboardSWRConfig
@@ -124,7 +124,7 @@ export default function AdminDashboard() {
               <div className="p-4 flex flex-col gap-3">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-14" />)}</div>
             ) : (
               <div className="divide-y divide-[#F0EAD8]">
-                {(data?.recentUsers ?? []).map((u) => {
+                {(data?.recentUsers ?? []).map((u: any) => {
                   const r = roleConfig[u.role] ?? roleConfig.customer;
                   return (
                     <div key={u.id} className="flex items-center gap-3 p-4 hover:bg-[#FFFBE9] transition-colors">
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
               <div className="text-center py-10"><p className="text-sm text-[#8A8AAA]">No bookings yet</p></div>
             ) : (
               <div className="divide-y divide-[#F0EAD8]">
-                {(data?.recentBookings ?? []).map((b) => {
+                {(data?.recentBookings ?? []).map((b: any) => {
                   const s = statusConfig[b.status] ?? statusConfig.pending;
                   return (
                     <div key={b.id} className="flex items-center gap-3 p-4 hover:bg-[#FFFBE9] transition-colors">

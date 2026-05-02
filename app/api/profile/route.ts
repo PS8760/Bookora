@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,7 @@ export async function DELETE(request: NextRequest) {
 
     // Hard-delete in a transaction: remove all related data first to satisfy FK constraints,
     // then delete the user row itself.
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Cancel / delete bookings made by this user
       await tx.booking.deleteMany({ where: { customerId: userId } });
 

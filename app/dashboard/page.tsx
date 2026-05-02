@@ -29,7 +29,7 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 export default function DashboardPage() {
-  const { data: responseData, error, mutate } = useSWR(
+  const { data: responseData, error, mutate } = useSWR<{ data: DashData }>(
     "/api/dashboard/customer",
     jsonFetcher,
     dashboardSWRConfig
@@ -125,7 +125,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="divide-y divide-[#F0EAD8]">
-              {bookings.map((b, idx) => {
+              {bookings.map((b: any, idx: number) => {
                 const s = statusConfig[b.status] ?? statusConfig.pending;
                 return (
                   <div key={b.id} className="flex items-center gap-4 p-4 hover:bg-[#FFFBE9] transition-colors">

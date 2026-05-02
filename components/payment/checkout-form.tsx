@@ -75,7 +75,6 @@ export const CheckoutForm: React.FC<CheckoutFormProps> = ({
               layout: "tabs",
               terms: {
                 card: 'never',
-                upi: 'never'
               },
               business: {
                 name: 'Bookora'

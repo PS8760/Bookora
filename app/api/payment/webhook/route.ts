@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import prisma from "@/prisma/prisma";
 import Stripe from "stripe";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ received: true });
         }
 
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           // 1. Update Payment record
           await tx.payment.update({
             where: { gatewayRef: intent.id },
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
 
         if (!intentId) break;
 
-        await prisma.$transaction(async (tx) => {
+        await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           const payment = await tx.payment.update({
             where: { gatewayRef: intentId },
             data: {

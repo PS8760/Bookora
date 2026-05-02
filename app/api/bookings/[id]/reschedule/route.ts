@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { Prisma } from "@prisma/client";
 import { invalidateSlotCacheForSlot } from "@/lib/slot-cache";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +48,7 @@ export async function POST(
       );
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const booking = await tx.booking.findUnique({
         where: { id: bookingId },
         include: {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const reason = body.reason ?? null;
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const booking = await tx.booking.findUnique({
         where: { id },
         include: { service: true, providerSlot: true },
