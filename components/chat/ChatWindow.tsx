@@ -90,17 +90,19 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
     }
   };
 
+  const partner = messages.find(m => m.senderId !== currentUserId)?.sender;
+
   return (
-    <div className="flex flex-col h-[500px] bg-white rounded-2xl border border-[#E8E0D0] shadow-xl overflow-hidden">
+    <div className="flex flex-col h-full bg-white rounded-2xl border border-[#E8E0D0] shadow-xl overflow-hidden">
       {/* Header */}
       <div className="bg-[#724A6A] p-4 flex items-center justify-between text-white">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold">
-            C
+            {partner?.name?.charAt(0) || "C"}
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Chat Support</h3>
-            <p className="text-[10px] opacity-80">Online</p>
+            <h3 className="font-semibold text-sm">{partner?.name || "Chat Support"}</h3>
+            <p className="text-[10px] opacity-80">{partner?.role || "Support"}</p>
           </div>
         </div>
         {onClose && (

@@ -37,7 +37,31 @@ export default function ChatPageContent({ currentUserId }: { currentUserId: stri
       {/* Left List */}
       <div className="w-full md:w-80 border-r border-[#E8E0D0] flex flex-col bg-[#FDFCF9]">
         <div className="p-4 border-b border-[#E8E0D0]">
-          <h2 className="text-lg font-bold text-[#1A1A2E] mb-4">Messages</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-[#1A1A2E]">Messages</h2>
+            <button 
+              onClick={async () => {
+                // Find an admin to chat with
+                const res = await fetch("/api/chat/send", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ 
+                    receiverId: "admin", // Special keyword or find first admin
+                    content: "Hello, I need support.",
+                    type: "DIRECT"
+                  }),
+                });
+                if (res.ok) {
+                  const j = await res.json();
+                  setActiveChatId(j.data.conversationId);
+                  mutate();
+                }
+              }}
+              className="text-[10px] font-bold bg-[#724A6A] text-white px-3 py-1.5 rounded-lg hover:bg-[#5D3C56] transition-colors"
+            >
+              Contact Support
+            </button>
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8A8AAA]" size={16} />
             <input 

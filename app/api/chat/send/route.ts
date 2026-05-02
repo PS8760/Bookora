@@ -35,6 +35,15 @@ export async function POST(request: NextRequest) {
         where: { bookingId, type: "BOOKING" },
       });
 
+      // Security Check: Only customer or organiser of this booking can chat
+      if (booking.customerId !== currentUserId && booking.service.organiserId !== currentUserId) {
+         // Admins can also join booking chats? Yes, usually for moderation.
+         const currentUser = await prisma.user.findUnique({ where: { id: currentUserId } });
+         if (currentUser?.role !== "admin") {
+           return NextResponse.json({ error: { code: "FORBIDDEN", message: "You are not a participant in this booking" } }, { status: 403 });
+         }
+      }
+
       if (existing) {
         chatId = existing.id;
       } else {
@@ -57,11 +66,46 @@ export async function POST(request: NextRequest) {
 
     // Direct chat between users (e.g. Admin & User)
     if (!chatId && receiverId) {
+      let targetId = receiverId;
+
+      // Special case: find first admin if receiverId is "admin"
+      if (receiverId === "admin") {
+        const adminUser = await prisma.user.findFirst({ where: { role: "admin" } });
+        if (!adminUser) {
+          return NextResponse.json({ error: { code: "NOT_FOUND", message: "No administrator found" } }, { status: 404 });
+        }
+        targetId = adminUser.id;
+      }
+
+      // If trying to chat with self
+      if (targetId === currentUserId) {
+         return NextResponse.json({ error: { code: "INVALID_INPUT", message: "You cannot chat with yourself" } }, { status: 400 });
+      }
+
+      // Security Check: Only Admin can initiate direct chats with anyone. 
+      // Non-admins can only initiate direct chats with Admins.
+      const currentUser = await prisma.user.findUnique({ where: { id: currentUserId } });
+      const targetUser = await prisma.user.findUnique({ where: { id: targetId } });
+
+      if (!currentUser || !targetUser) {
+        return NextResponse.json({ error: { code: "NOT_FOUND", message: "User not found" } }, { status: 404 });
+      }
+
+      const isAdminInteraction = currentUser.role === "admin" || targetUser.role === "admin";
+      
+      if (!isAdminInteraction) {
+        return NextResponse.json({ 
+          error: { code: "FORBIDDEN", message: "Direct chats are only allowed between users and administrators." } 
+        }, { status: 403 });
+      }
+
       // Find existing direct chat
       const existing = await prisma.conversation.findFirst({
         where: {
           type: "DIRECT",
-          participants: { every: { userId: { in: [currentUserId, receiverId] } } },
+          participants: { 
+            every: { userId: { in: [currentUserId, targetId] } } 
+          },
         },
       });
 
@@ -74,7 +118,7 @@ export async function POST(request: NextRequest) {
             participants: {
               create: [
                 { userId: currentUserId },
-                { userId: receiverId },
+                { userId: targetId },
               ],
             },
           },
