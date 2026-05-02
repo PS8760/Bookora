@@ -24,6 +24,8 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      // NOTE: Ensure your Authorized Redirect URI in Google Cloud Console is exactly:
+      // http://localhost:3000/api/auth/callback/google
     },
   },
   session: {
@@ -55,9 +57,10 @@ export const auth = betterAuth({
     },
   },
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_SITE_URL,
+  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
   trustedOrigins: [
-    process.env.BETTER_AUTH_URL as string,
-    process.env.NEXT_PUBLIC_SITE_URL as string,
-  ].filter(Boolean),
+    process.env.BETTER_AUTH_URL,
+    process.env.NEXT_PUBLIC_SITE_URL,
+    "http://localhost:3000",
+  ].filter((o): o is string => !!o),
 });
