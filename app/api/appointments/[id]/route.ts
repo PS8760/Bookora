@@ -187,6 +187,8 @@ export async function PATCH(
       }
 
       return svc;
+    }, {
+      timeout: 15000
     });
 
     return NextResponse.json({ data: updated });

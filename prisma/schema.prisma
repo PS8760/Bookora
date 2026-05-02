@@ -3,7 +3,6 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
-  output          = "./generated/prisma"
 }
 
 datasource db {
@@ -89,34 +88,34 @@ enum AuditAction {
 // ─────────────────────────────────────────
 
 model user {
-  id            String    @id
+  id            String   @id
   name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
+  email         String   @unique
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   // Custom fields (additionalFields in auth.ts)
-  role      String  @default("customer")
-  isActive  Boolean @default(true)
-  timezone  String  @default("UTC")
+  role      String    @default("customer")
+  isActive  Boolean   @default(true)
+  timezone  String    @default("UTC")
   deletedAt DateTime?
 
   // Relations to better-auth tables
-  sessions  session[]
-  accounts  account[]
+  sessions session[]
+  accounts account[]
 
   // App relations
-  providerProfile  ProviderProfile?
-  customerBookings Booking[]        @relation("CustomerBookings")
-  providerBookings Booking[]        @relation("ProviderBookings")
+  providerProfile   ProviderProfile?
+  customerBookings  Booking[]        @relation("CustomerBookings")
+  providerBookings  Booking[]        @relation("ProviderBookings")
   organisedServices Service[]
-  providerSlots    ProviderSlot[]
-  notifications    Notification[]
-  auditLogs        AuditLog[]
-  messages         Message[]
-  chats            ConversationParticipant[]
+  providerSlots     ProviderSlot[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  messages          Message[]
+  chats             ConversationParticipant[]
 
   @@index([email])
   @@index([role, isActive])
@@ -210,11 +209,11 @@ model Resource {
 
 model Service {
   id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organiserId     String          // FK to user.id (String, not UUID)
+  organiserId     String // FK to user.id (String, not UUID)
   title           String
   description     String?
-  category        String?         // e.g. "Health", "Beauty", "Fitness"
-  icon            String?         // emoji or icon identifier
+  category        String? // e.g. "Health", "Beauty", "Fitness"
+  icon            String? // emoji or icon identifier
   durationMinutes Int
   type            AppointmentType @default(USER_BASED)
   isPublished     Boolean         @default(false)
@@ -230,7 +229,7 @@ model Service {
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?
 
-  organiser     user          @relation(fields: [organiserId], references: [id])
+  organiser     user           @relation(fields: [organiserId], references: [id])
   schedules     Schedule[]
   questions     Question[]
   providerSlots ProviderSlot[]
@@ -261,11 +260,11 @@ model Schedule {
 }
 
 model WeeklyRule {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  scheduleId  String   @db.Uuid
-  dayOfWeek   Int      // 0=Sunday … 6=Saturday
-  startMinute Int      // minutes since midnight, e.g. 540 = 09:00
-  endMinute   Int      // e.g. 1020 = 17:00
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scheduleId  String @db.Uuid
+  dayOfWeek   Int // 0=Sunday … 6=Saturday
+  startMinute Int // minutes since midnight, e.g. 540 = 09:00
+  endMinute   Int // e.g. 1020 = 17:00
 
   schedule Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
 
@@ -293,7 +292,7 @@ model FlexibleDay {
 model ProviderSlot {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   serviceId  String   @db.Uuid
-  userId     String?  // FK to user.id (String)
+  userId     String? // FK to user.id (String)
   resourceId String?  @db.Uuid
   startTime  DateTime
   endTime    DateTime
@@ -304,10 +303,10 @@ model ProviderSlot {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  service   Service   @relation(fields: [serviceId], references: [id])
-  user      user?     @relation(fields: [userId], references: [id])
-  resource  Resource? @relation(fields: [resourceId], references: [id])
-  bookings  Booking[]
+  service  Service   @relation(fields: [serviceId], references: [id])
+  user     user?     @relation(fields: [userId], references: [id])
+  resource Resource? @relation(fields: [resourceId], references: [id])
+  bookings Booking[]
 
   @@unique([serviceId, startTime, endTime, userId, resourceId])
   @@index([serviceId, startTime, endTime])
@@ -323,10 +322,10 @@ model ProviderSlot {
 
 model Booking {
   id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  customerId     String        // FK to user.id (String)
+  customerId     String // FK to user.id (String)
   serviceId      String        @db.Uuid
   providerSlotId String        @db.Uuid
-  userId         String?       // assigned provider user
+  userId         String? // assigned provider user
   resourceId     String?       @db.Uuid
   status         BookingStatus @default(PENDING)
   paymentStatus  PaymentStatus @default(UNPAID)
@@ -337,15 +336,15 @@ model Booking {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  customer     user           @relation("CustomerBookings", fields: [customerId], references: [id])
-  service      Service        @relation(fields: [serviceId], references: [id])
-  providerSlot ProviderSlot   @relation(fields: [providerSlotId], references: [id])
-  provider     user?          @relation("ProviderBookings", fields: [userId], references: [id])
-  resource     Resource?      @relation(fields: [resourceId], references: [id])
-  answers      BookingAnswer[]
-  payments     Payment[]
-  reschedules  RescheduleLog[]
-  auditLogs    AuditLog[]
+  customer      user            @relation("CustomerBookings", fields: [customerId], references: [id])
+  service       Service         @relation(fields: [serviceId], references: [id])
+  providerSlot  ProviderSlot    @relation(fields: [providerSlotId], references: [id])
+  provider      user?           @relation("ProviderBookings", fields: [userId], references: [id])
+  resource      Resource?       @relation(fields: [resourceId], references: [id])
+  answers       BookingAnswer[]
+  payments      Payment[]
+  reschedules   RescheduleLog[]
+  auditLogs     AuditLog[]
   notifications Notification[]
   conversations Conversation[]
 
@@ -363,7 +362,7 @@ model RescheduleLog {
   bookingId       String   @db.Uuid
   fromSlotId      String   @db.Uuid
   toSlotId        String   @db.Uuid
-  rescheduledById String   // FK to user.id
+  rescheduledById String // FK to user.id
   reason          String?
   createdAt       DateTime @default(now())
 
@@ -431,7 +430,7 @@ model Payment {
   amount          Decimal       @db.Decimal(10, 2)
   currency        String        @default("INR")
   status          PaymentStatus @default(PENDING)
-  gatewayProvider String?       // "razorpay", "stripe", etc.
+  gatewayProvider String? // "razorpay", "stripe", etc.
   gatewayRef      String?       @unique
   idempotencyKey  String        @unique
   paidAt          DateTime?

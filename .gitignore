@@ -43,3 +43,6 @@ next-env.d.ts
 # prisma generated client
 prisma/generated/
 prisma/generated/**
+
+# backups
+*.backup

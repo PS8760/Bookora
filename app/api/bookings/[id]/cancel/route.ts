@@ -81,6 +81,8 @@ export async function POST(
       });
 
       return { ...updated, serviceId: booking.serviceId, slotStartTime: booking.slotStartTime };
+    }, {
+      timeout: 15000
     });
 
     await prisma.auditLog.create({

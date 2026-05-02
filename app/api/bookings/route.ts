@@ -294,6 +294,8 @@ export async function POST(request: NextRequest) {
       });
 
       return { booking, slotStartTime: slot.startTime };
+    }, {
+      timeout: 15000
     });
 
     // ── Cache invalidation (outside transaction) ───────────────────────────────

@@ -91,6 +91,8 @@ export async function POST(
           customer: { select: { id: true, name: true, email: true } },
         },
       });
+    }, {
+      timeout: 15000
     });
 
     return NextResponse.json({ data: result, message: "Booking rejected successfully" });

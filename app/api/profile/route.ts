@@ -148,6 +148,8 @@ export async function DELETE(request: NextRequest) {
 
       // Finally delete the user
       await tx.user.delete({ where: { id: userId } });
+    }, {
+      timeout: 15000
     });
 
     return NextResponse.json({ success: true });

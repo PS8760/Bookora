@@ -162,6 +162,8 @@ export async function POST(
       });
 
       return { updatedBooking, oldSlotStartTime: booking.providerSlot.startTime };
+    }, {
+      timeout: 15000
     });
 
     // Invalidate slot cache for BOTH old and new slot dates
