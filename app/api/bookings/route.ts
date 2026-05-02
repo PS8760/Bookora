@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { invalidateSlotCache } from "@/lib/slot-cache";
+import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -187,10 +188,6 @@ export async function POST(request: NextRequest) {
       }
 
       // ── Optimistic lock: atomic capacity decrement ─────────────────────────
-      // WHERE condition ensures we only update if capacity is still available.
-      // If slotVersion is provided, also check the version matches — this
-      // prevents a client with stale capacity knowledge from booking.
-      // If another request already took the last spot, count === 0 → 409.
       const capacityUpdate = await tx.providerSlot.updateMany({
         where: {
           id:      slotId,
@@ -232,7 +229,7 @@ export async function POST(request: NextRequest) {
                   amount:          slot.service.paymentAmount,
                   currency:        slot.service.currency,
                   status:          "PENDING",
-                  gatewayProvider: "razorpay",
+                  gatewayProvider: "stripe",
                   idempotencyKey,
                 },
               }
@@ -284,12 +281,8 @@ export async function POST(request: NextRequest) {
             : undefined,
         },
         include: {
-          providerSlot: true,
-          service: { include: { organiser: { select: { id: true, name: true, email: true } } } },
-          customer: { select: { id: true, name: true, email: true } },
-          provider: { select: { id: true, name: true, email: true } },
-          resource: true,
           payments: true,
+          service: true,
         },
       });
 
@@ -298,12 +291,54 @@ export async function POST(request: NextRequest) {
       timeout: 15000
     });
 
+    // ── Stripe Payment Intent Creation ─────────────────────────────────────────
+    let clientSecret: string | null = null;
+    const booking = result.booking;
+    const payment = (booking as any).payments?.[0];
+
+    if (payment && (booking as any).service?.advancePayment && (booking as any).service?.paymentAmount) {
+      try {
+        // Convert amount (Decimal) to paise (Integer) for Stripe
+        const amountInPaise = Math.round(Number((booking as any).service.paymentAmount) * 100);
+        
+        const intent = await stripe.paymentIntents.create({
+          amount: amountInPaise,
+          currency: (booking as any).service.currency.toLowerCase(),
+          metadata: {
+            bookingId: booking.id,
+            paymentId: payment.id,
+            customerId: user.id,
+          },
+          payment_method_types: ["card", "upi"], // Specifically including UPI as requested
+          description: `Payment for booking ${booking.id}`,
+        });
+
+        clientSecret = intent.client_secret;
+
+        // Update Payment record with gateway reference
+        await prisma.payment.update({
+          where: { id: payment.id },
+          data: { gatewayRef: intent.id },
+        });
+      } catch (stripeError) {
+        console.error("Stripe Intent Creation Failed:", stripeError);
+        // We don't fail the whole request, but return the booking so user can retry payment
+      }
+    }
+
     // ── Cache invalidation (outside transaction) ───────────────────────────────
     // Immediately bust the slot cache so the next poll reflects updated capacity.
     const slotDate = result.slotStartTime.toISOString().slice(0, 10);
     invalidateSlotCache(serviceId, slotDate);
 
-    return NextResponse.json({ data: result.booking }, { status: 201 });
+    return NextResponse.json({ 
+      data: result.booking,
+      clientSecret,
+      payment: clientSecret ? {
+        amount: Number((booking as any).service.paymentAmount),
+        currency: (booking as any).service.currency
+      } : null
+    }, { status: 201 });
   } catch (error) {
     const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
     console.error("POST /api/bookings error:", error);

@@ -46,3 +46,4 @@ prisma/generated/**
 
 # backups
 *.backup
+.kiro

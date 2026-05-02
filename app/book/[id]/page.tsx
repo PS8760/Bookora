@@ -6,21 +6,13 @@ import { useSession } from "@/lib/auth-client";
 import { useParams, useSearchParams } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { etagFetcher, clearETagCache, SLOT_REFRESH_MS } from "@/lib/realtime";
-import { 
-  Calendar, 
-  ChevronLeft, 
-  Lock, 
-  Check, 
-  Frown, 
-  Clock, 
-  Users, 
-  Phone, 
-  Mail, 
-  FileText,
-  AlertCircle
-} from "lucide-react";
+import { Calendar, ChevronLeft, Lock, Check, Frown, Clock, Users, Phone, Mail, FileText, AlertCircle, ShieldCheck, CreditCard } from "lucide-react";
+import { Elements } from "@stripe/react-stripe-js";
+import { getStripe } from "@/lib/stripe-client";
+import { OrderSummary } from "@/components/payment/order-summary";
+import { CheckoutForm } from "@/components/payment/checkout-form";
 
-const STEPS = ["Select Slot", "Your Details", "Confirm"];
+const STEPS = ["Select Slot", "Your Details", "Review", "Payment"];
 const DAYS  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const today = new Date();
 
@@ -85,6 +77,8 @@ export default function BookingPage() {
   const [confirmedBooking, setConfirmedBooking] = useState<any>(null);
   const [loading, setLoading]             = useState(false);
   const [bookingError, setBookingError]   = useState("");
+  const [clientSecret, setClientSecret]   = useState<string | null>(null);
+  const [paymentData, setPaymentData]     = useState<any>(null);
 
   // Service data
   const [service, setService]             = useState<ServiceInfo | null>(null);
@@ -265,10 +259,10 @@ export default function BookingPage() {
       });
       const j = await res.json();
       if (!res.ok) {
+        // ... (existing error handling)
         const errorCode = j.error?.code;
         const errorMsg = j.error?.message ?? "Booking failed. Please try again.";
 
-        // Race condition recovery: slot was taken between selection and submit
         if (errorCode === "CAPACITY_EXCEEDED" || errorCode === "SLOT_PAST") {
           setBookingError(
             errorCode === "CAPACITY_EXCEEDED"
@@ -276,8 +270,7 @@ export default function BookingPage() {
               : "This slot has passed. Please choose a different time."
           );
           setSelectedSlot(null);
-          setStep(0); // Take user back to slot selection
-          // Force refresh slots
+          setStep(0);
           if (selectedDate) {
             const dateStr = selectedDate.toISOString().slice(0, 10);
             clearETagCache(`/api/appointments/${params.id}/slots?date=${dateStr}`);
@@ -285,7 +278,6 @@ export default function BookingPage() {
           }
         } else {
           setBookingError(errorMsg);
-          // Clear ETag cache so next poll gets fresh slot data
           if (selectedDate) {
             const dateStr = selectedDate.toISOString().slice(0, 10);
             clearETagCache(`/api/appointments/${params.id}/slots?date=${dateStr}`);
@@ -294,8 +286,21 @@ export default function BookingPage() {
         }
         return;
       }
-      setConfirmedBooking(j.data);
-      setConfirmed(true);
+
+      // If we got a clientSecret, move to payment step
+      if (j.clientSecret) {
+        setClientSecret(j.clientSecret);
+        setConfirmedBooking(j.data);
+        setPaymentData({
+          bookingId: j.data.id,
+          amount: j.payment.amount,
+          currency: j.payment.currency,
+        });
+        setStep(3); // Payment step
+      } else {
+        setConfirmedBooking(j.data);
+        setConfirmed(true);
+      }
     } catch {
       setBookingError("Network error. Please try again.");
     } finally {
@@ -761,7 +766,7 @@ export default function BookingPage() {
               </div>
             )}
 
-            {/* Step 2: Confirm */}
+            {/* Step 2: Confirm / Review */}
             {step === 2 && (
               <div className="bg-white rounded-2xl border border-[#E8E0D0] p-6 shadow-[0_2px_12px_rgba(114,74,106,0.06)]">
                 <h2 className="text-xl font-bold text-[#1A1A2E] mb-6">Review &amp; Confirm</h2>
@@ -801,7 +806,7 @@ export default function BookingPage() {
                 {service?.advancePayment && (
                   <div className="p-4 bg-[#F5EDF4] rounded-xl border border-[#D4B8CF] mb-4">
                     <p className="text-xs text-[#4A4A6A] leading-relaxed">
-                      This is a paid appointment. A Razorpay payment record will be created for the organizer account after confirmation.
+                      This is a paid appointment. Secure payment via Stripe (UPI/Card) is required to confirm your booking.
                     </p>
                   </div>
                 )}
@@ -830,11 +835,61 @@ export default function BookingPage() {
                         <svg className="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                         </svg>
-                        Confirming...
+                        Processing...
                       </span>
-                    ) : rescheduleBookingId ? "Confirm Reschedule ✓" : "Confirm Booking ✓"}
+                    ) : service?.advancePayment ? "Proceed to Payment →" : (rescheduleBookingId ? "Confirm Reschedule ✓" : "Confirm Booking ✓")}
                   </button>
                 </div>
+              </div>
+            )}
+
+            {/* Step 3: Payment */}
+            {step === 3 && clientSecret && paymentData && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="bg-[#724A6A] rounded-2xl p-6 text-white overflow-hidden relative">
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ShieldCheck className="w-5 h-5 text-[#D4B8CF]" />
+                      <span className="text-xs font-bold uppercase tracking-widest text-[#D4B8CF]">Secure Checkout</span>
+                    </div>
+                    <h2 className="text-2xl font-bold">Complete your payment</h2>
+                    <p className="text-[#D4B8CF] text-sm mt-1 opacity-90">Your booking is reserved. Complete the payment to confirm.</p>
+                  </div>
+                  {/* Decorative background circle */}
+                  <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <Elements 
+                    stripe={getStripe()} 
+                    options={{ 
+                      clientSecret,
+                      appearance: {
+                        theme: 'stripe',
+                        variables: {
+                          colorPrimary: '#724A6A',
+                          colorBackground: '#ffffff',
+                          colorText: '#1A1A2E',
+                          borderRadius: '16px',
+                        }
+                      }
+                    }}
+                  >
+                    <CheckoutForm 
+                      bookingId={paymentData.bookingId} 
+                      amount={paymentData.amount} 
+                      currency={paymentData.currency} 
+                    />
+                  </Elements>
+                </div>
+
+                <button 
+                  onClick={() => setStep(2)} 
+                  className="text-sm text-[#8A8AAA] hover:text-[#724A6A] font-medium transition-colors flex items-center gap-1.5 mx-auto"
+                >
+                  <ChevronLeft size={14} />
+                  Cancel and go back
+                </button>
               </div>
             )}
           </div>
