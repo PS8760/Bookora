@@ -6,6 +6,7 @@ import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { CalendarDays, Clock, CheckCircle2, XCircle, Inbox, Calendar } from "lucide-react";
 import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
+import ChatWindow from "@/components/chat/ChatWindow";
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   confirmed: { label: "Confirmed", bg: "#E8F5E9", text: "#2E7D32" },
@@ -39,6 +40,7 @@ export default function DashboardPage() {
 
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [chatBookingId, setChatBookingId] = useState<string | null>(null);
 
   const handleCancel = async (bookingId: string) => {
     if (!confirm("Cancel this booking?")) return;
@@ -159,6 +161,12 @@ export default function DashboardPage() {
                         >
                           Reschedule
                         </Link>
+                        <button
+                          onClick={() => setChatBookingId(b.id)}
+                          className="text-xs text-center text-[#724A6A] font-medium px-2 py-1 rounded-lg bg-[#F5EDF4] hover:bg-[#E8D5E4] transition-colors flex-shrink-0"
+                        >
+                          Chat
+                        </button>
                       </div>
                     )}
                   </div>
@@ -168,6 +176,20 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Chat Overlay */}
+      {chatBookingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md animate-in zoom-in-95 duration-200">
+            <ChatWindow 
+              bookingId={chatBookingId}
+              currentUserId={data?.user?.id}
+              onClose={() => setChatBookingId(null)}
+            />
+          </div>
+        </div>
+      )}
+
     </DashboardLayout>
   );
 }

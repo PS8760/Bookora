@@ -115,6 +115,8 @@ model user {
   providerSlots    ProviderSlot[]
   notifications    Notification[]
   auditLogs        AuditLog[]
+  messages         Message[]
+  chats            ConversationParticipant[]
 
   @@index([email])
   @@index([role, isActive])
@@ -345,6 +347,7 @@ model Booking {
   reschedules  RescheduleLog[]
   auditLogs    AuditLog[]
   notifications Notification[]
+  conversations Conversation[]
 
   @@unique([providerSlotId, customerId])
   @@index([customerId, status])
@@ -491,3 +494,50 @@ model AuditLog {
   @@index([createdAt])
   @@map("audit_logs")
 }
+
+// ─────────────────────────────────────────
+// CHAT SYSTEM
+// ─────────────────────────────────────────
+
+model Conversation {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type      String   @default("DIRECT") // DIRECT, BOOKING, SUPPORT
+  bookingId String?  @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+  booking      Booking? @relation(fields: [bookingId], references: [id])
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String @db.Uuid
+  userId         String
+  lastReadAt     DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         user         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String   @db.Uuid
+  senderId       String
+  content        String
+  isAi           Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       user         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
