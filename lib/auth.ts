@@ -1,5 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { emailOTP } from "better-auth/plugins";
+import bcrypt from "bcrypt";
 import prisma from "@/prisma/prisma";
 
 export const auth = betterAuth({
@@ -8,7 +10,15 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false,
+    requireEmailVerification: false, // OTP verification handled by emailOTP plugin
+    password: {
+      hash: async (password) => {
+        return await bcrypt.hash(password, 10);
+      },
+      verify: async ({ hash, password }) => {
+        return await bcrypt.compare(password, hash);
+      },
+    },
     async sendResetPasswordEmail(data: { user: any; url: string }) {
       const { user, url } = data;
       try {
@@ -19,6 +29,29 @@ export const auth = betterAuth({
       }
     },
   },
+  plugins: [
+    emailOTP({
+      otpLength: 6,
+      expiresIn: 600, // 10 minutes
+      async sendVerificationOTP({ email, otp, type }) {
+        if (type === "email-verification" || type === "sign-in") {
+          try {
+            const { sendOTPEmail } = await import("./email");
+            console.log(`[AUTH] Sending OTP ${otp} to ${email}`);
+            await sendOTPEmail({
+              to: email,
+              name: email.split("@")[0] || "User",
+              otp,
+            });
+            console.log(`[AUTH] OTP sent successfully to ${email}`);
+          } catch (err) {
+            console.error("[AUTH] Error sending OTP:", err);
+          }
+        }
+      },
+      overrideDefaultEmailVerification: true,
+    }),
+  ],
   socialProviders: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
