@@ -51,7 +51,7 @@ The Stripe payment gateway has been fully integrated into your booking system!
 Your `.env` file already has Stripe credentials. You need to add the webhook secret:
 
 ```env
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51Ra9p5AHiGDEI1dTXKdkrpLTG8vjhSSr3aMLy5xhciQYMva5mD9avVRJV61IF8JMl8mIZmCasnmvoylNlPsjKjX500CJ9dWeRf
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key_here
 STRIPE_SECRET_KEY=sk_test_your_secret_key_here
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
 ```
