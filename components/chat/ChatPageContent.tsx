@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
+import { useSearchParams } from "next/navigation";
 import { jsonFetcher, dashboardSWRConfig } from "@/lib/realtime";
 import { MessageSquare, User, Calendar, Search } from "lucide-react";
 import ChatWindow from "./ChatWindow";
@@ -21,10 +22,23 @@ export default function ChatPageContent({ currentUserId }: { currentUserId: stri
     refreshInterval: 5000,
   });
 
+  const searchParams = useSearchParams();
+  const initialBookingId = searchParams.get("bookingId");
+
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   const conversations: Conversation[] = convData?.data ?? [];
+
+  // Automatically select the conversation linked to the bookingId
+  useEffect(() => {
+    if (initialBookingId && conversations.length > 0 && !activeChatId) {
+      const conv = conversations.find(c => c.booking?.service && (c as any).bookingId === initialBookingId || c.id === initialBookingId || (c as any).booking?.id === initialBookingId);
+      if (conv) {
+        setActiveChatId(conv.id);
+      }
+    }
+  }, [initialBookingId, conversations, activeChatId]);
   
   const filteredConversations = conversations.filter(c => {
     const otherParticipant = c.participants.find(p => p.user.id !== currentUserId)?.user;
@@ -127,16 +141,20 @@ export default function ChatPageContent({ currentUserId }: { currentUserId: stri
 
       {/* Right Chat */}
       <div className="hidden md:flex flex-1 bg-white items-center justify-center relative">
-        {activeChatId ? (
-          <div className="w-full h-full">
-             <ChatWindow 
-                key={activeChatId}
-                chatId={activeChatId}
-                currentUserId={currentUserId}
-                // No onClose needed here as it's a full panel
-              />
-          </div>
-        ) : (
+        {activeChatId ? (() => {
+          const activeConv = conversations.find(c => c.id === activeChatId);
+          const partner = activeConv?.participants.find(p => p.user.id !== currentUserId)?.user;
+          return (
+            <div className="w-full h-full">
+               <ChatWindow 
+                  key={activeChatId}
+                  chatId={activeChatId}
+                  currentUserId={currentUserId}
+                  partner={partner}
+                />
+            </div>
+          );
+        })() : (
           <div className="text-center p-8">
             <div className="w-16 h-16 bg-[#F5EDF4] rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#724A6A]">
               <MessageSquare size={32} />
@@ -150,16 +168,21 @@ export default function ChatPageContent({ currentUserId }: { currentUserId: stri
       </div>
 
       {/* Mobile Chat View (Overlay) */}
-      {activeChatId && (
-        <div className="fixed inset-0 z-50 md:hidden flex flex-col bg-white animate-in slide-in-from-right duration-300">
-           <ChatWindow 
-              key={activeChatId}
-              chatId={activeChatId}
-              currentUserId={currentUserId}
-              onClose={() => setActiveChatId(null)}
-            />
-        </div>
-      )}
+      {activeChatId && (() => {
+        const activeConv = conversations.find(c => c.id === activeChatId);
+        const partner = activeConv?.participants.find(p => p.user.id !== currentUserId)?.user;
+        return (
+          <div className="fixed inset-0 z-50 md:hidden flex flex-col bg-white animate-in slide-in-from-right duration-300">
+             <ChatWindow 
+                key={activeChatId}
+                chatId={activeChatId}
+                currentUserId={currentUserId}
+                onClose={() => setActiveChatId(null)}
+                partner={partner}
+              />
+          </div>
+        );
+      })()}
     </div>
   );
 }

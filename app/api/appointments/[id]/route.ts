@@ -133,6 +133,8 @@ export async function PATCH(
       assignmentMode,
       maxPerSlot,
       venue,
+      introMessage,
+      confirmMessage,
     } = body;
 
     // Validate enums if provided
@@ -170,6 +172,8 @@ export async function PATCH(
     if (assignmentMode !== undefined) updateData.assignmentMode = assignmentMode;
     if (maxPerSlot !== undefined) updateData.maxPerSlot = Number(maxPerSlot);
     if (venue !== undefined) updateData.venue = venue;
+    if (introMessage !== undefined) updateData.introMessage = introMessage || null;
+    if (confirmMessage !== undefined) updateData.confirmMessage = confirmMessage || null;
 
     const updated = await prisma.$transaction(async (tx) => {
       const svc = await tx.service.update({

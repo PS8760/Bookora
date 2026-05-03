@@ -73,10 +73,14 @@ export default function FeaturedServices() {
                   <div className="p-6 flex-1 flex flex-col">
                     <div className="flex items-start justify-between mb-4">
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-xl flex-shrink-0 overflow-hidden"
                         style={{ background: colors.bg }}
                       >
-                        {s.icon || <CalendarDays size={20} />}
+                        {s.icon?.startsWith('/') || s.icon?.startsWith('http') ? (
+                          <img src={s.icon} alt={s.title} className="w-full h-full object-cover" />
+                        ) : (
+                          s.icon || <CalendarDays size={20} />
+                        )}
                       </div>
                       <span className="text-sm font-bold text-[#724A6A]">{price}</span>
                     </div>

@@ -129,9 +129,25 @@ export default function DashboardPage() {
                 const s = statusConfig[b.status] ?? statusConfig.pending;
                 return (
                   <div key={b.id} className="flex items-center gap-4 p-4 hover:bg-[#FFFBE9] transition-colors">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                    <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 overflow-hidden"
                       style={{ background: iconColors[idx % iconColors.length] }}>
-                      {b.icon || <Calendar size={20} />}
+                      {b.icon?.startsWith('/') || b.icon?.startsWith('http') ? (
+                        <img src={b.icon} alt="Icon" className="w-full h-full object-cover" />
+                      ) : b.icon && b.icon !== "📅" ? (
+                        <span className="text-xl">{b.icon}</span>
+                      ) : b.rawDate ? (() => {
+                        const d = new Date(b.rawDate);
+                        const month = d.toLocaleString('default', { month: 'short' });
+                        const day = d.getDate();
+                        return (
+                          <div className="flex flex-col items-center justify-center leading-tight">
+                            <span className="text-[9px] font-bold text-[#C62828] uppercase tracking-tighter">{month}</span>
+                            <span className="text-lg font-bold text-[#1A1A2E] -mt-0.5">{day}</span>
+                          </div>
+                        );
+                      })() : (
+                        <Calendar size={20} />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-[#1A1A2E] truncate">{b.service}</p>
@@ -146,19 +162,27 @@ export default function DashboardPage() {
                     </span>
                     {tab === "upcoming" && b.status !== "cancelled" && (
                       <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() => handleCancel(b.id)}
-                          disabled={cancelling === b.id}
-                          className="text-xs text-[#C62828] font-medium px-2 py-1 rounded-lg hover:bg-[#FFEBEE] transition-colors flex-shrink-0 disabled:opacity-50"
-                        >
-                          {cancelling === b.id ? "..." : "Cancel"}
-                        </button>
                         <Link
-                          href={`/book/${b.serviceId}?reschedule=${b.id}`}
-                          className="text-xs text-center text-[#2E7D32] font-medium px-2 py-1 rounded-lg hover:bg-[#E8F5E9] transition-colors flex-shrink-0"
+                          href={`/dashboard/messages?bookingId=${b.id}`}
+                          className="text-xs text-center text-[#724A6A] font-bold px-2 py-1.5 rounded-lg border border-[#724A6A] hover:bg-[#F5EDF4] transition-colors flex-shrink-0"
                         >
-                          Reschedule
+                          Message
                         </Link>
+                        <div className="flex gap-2 justify-end">
+                          <Link
+                            href={`/book/${b.serviceId}?reschedule=${b.id}`}
+                            className="text-xs text-center text-[#2E7D32] font-medium px-2 py-1 rounded-lg hover:bg-[#E8F5E9] transition-colors flex-shrink-0"
+                          >
+                            Reschedule
+                          </Link>
+                          <button
+                            onClick={() => handleCancel(b.id)}
+                            disabled={cancelling === b.id}
+                            className="text-xs text-[#C62828] font-medium px-2 py-1 rounded-lg hover:bg-[#FFEBEE] transition-colors flex-shrink-0 disabled:opacity-50"
+                          >
+                            {cancelling === b.id ? "..." : "Cancel"}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

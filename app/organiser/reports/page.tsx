@@ -209,7 +209,13 @@ export default function OrganiserReportsPage() {
                       <tr key={s.id} className="hover:bg-[#FFFBE9] transition-colors">
                         <td className="py-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-lg">{s.icon ?? "📅"}</span>
+                            <span className="text-lg w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden shrink-0 bg-[#F5EDF4]">
+                              {s.icon?.startsWith('/') || s.icon?.startsWith('http') ? (
+                                <img src={s.icon} alt={s.title} className="w-full h-full object-cover" />
+                              ) : (
+                                s.icon ?? "📅"
+                              )}
+                            </span>
                             <span className="text-sm font-medium text-[#1A1A2E]">{s.title}</span>
                           </div>
                         </td>

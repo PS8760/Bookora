@@ -77,6 +77,7 @@ function formatBooking(b: any) {
           day: "numeric", month: "short", year: "numeric",
         })
       : "—",
+    rawDate: b.providerSlot?.startTime ?? null,
     time: b.providerSlot?.startTime
       ? new Date(b.providerSlot.startTime).toLocaleTimeString("en-IN", {
           hour: "2-digit", minute: "2-digit",

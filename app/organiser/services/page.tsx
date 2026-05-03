@@ -193,10 +193,14 @@ export default function OrganiserServicesPage() {
                 >
                   {/* Icon */}
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
                     style={{ background: color }}
                   >
-                    {svc.icon ?? "📅"}
+                    {svc.icon?.startsWith('/') || svc.icon?.startsWith('http') ? (
+                      <img src={svc.icon} alt={svc.title} className="w-full h-full object-cover" />
+                    ) : (
+                      svc.icon ?? "📅"
+                    )}
                   </div>
 
                   {/* Info */}

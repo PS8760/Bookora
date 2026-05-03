@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { notifyBookingConfirmed } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,9 @@ export async function POST(
     }, {
       timeout: 15000
     });
+
+    // Send notifications
+    await notifyBookingConfirmed(result.id);
 
     return NextResponse.json({ data: result, message: "Booking confirmed successfully" });
   } catch (error) {

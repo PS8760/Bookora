@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import BookoraLogo from "@/components/BookoraLogo";
+import NotificationBell from "@/components/NotificationBell";
 import { useSession } from "@/lib/auth-client";
 import { signOutAndRedirect } from "@/lib/logout-client";
 
@@ -70,11 +71,13 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {session?.user ? (
               /* Logged-in state */
-              <div className="relative">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-[#E8E0D0] bg-white hover:border-[#724A6A] transition-colors"
-                >
+              <>
+                <NotificationBell />
+                <div className="relative">
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-[#E8E0D0] bg-white hover:border-[#724A6A] transition-colors"
+                  >
                   <div className="w-7 h-7 rounded-full bg-[#724A6A] flex items-center justify-center text-white text-xs font-bold">
                     {session.user.name?.charAt(0).toUpperCase() || "U"}
                   </div>
@@ -114,7 +117,8 @@ export default function Navbar() {
                     </button>
                   </div>
                 )}
-              </div>
+                </div>
+              </>
             ) : (
               /* Logged-out state */
               <>

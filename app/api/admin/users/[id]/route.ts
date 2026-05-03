@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { notifyRoleChanged } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,19 @@ export async function PATCH(
     const body = await request.json();
     const { role, isActive, name, timezone, email } = body;
 
+    // Get current user data for comparison
+    const currentUser = await prisma.user.findUnique({
+      where: { id },
+      select: { role: true },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: { code: "NOT_FOUND", message: "User not found" } },
+        { status: 404 }
+      );
+    }
+
     const validRoles = ["customer", "organiser", "admin"];
     if (role && !validRoles.includes(role)) {
       return NextResponse.json(
@@ -108,6 +122,11 @@ export async function PATCH(
         timezone: true,
       },
     });
+
+    // Send notification if role changed
+    if (role && role !== currentUser.role) {
+      await notifyRoleChanged(id, currentUser.role, role);
+    }
 
     return NextResponse.json({ data: updated });
   } catch (err: unknown) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { notifyBookingCancelled } from "@/lib/notification-triggers";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +95,11 @@ export async function POST(
     }, {
       timeout: 15000
     });
+
+    // Fire PUSH notification to customer (non-fatal)
+    notifyBookingCancelled(result.id, reason ?? undefined).catch((e) =>
+      console.error("notifyBookingCancelled (reject) failed:", e)
+    );
 
     return NextResponse.json({ data: result, message: "Booking rejected successfully" });
   } catch (error) {

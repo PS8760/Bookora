@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { generateSlots, invalidateSlots } from "@/lib/slots";
 import { invalidateServiceCache } from "@/lib/slot-cache";
+import { notifyServicePublished } from "@/lib/notification-triggers";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +105,11 @@ export async function POST(
 
     // Bust slot cache so customers see fresh slots immediately
     invalidateServiceCache(id);
+
+    // Notify organiser their service is live (non-fatal)
+    notifyServicePublished(id).catch((e) =>
+      console.error("notifyServicePublished failed:", e)
+    );
 
     return NextResponse.json({
       data: updated,

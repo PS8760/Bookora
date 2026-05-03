@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import ConditionalShell from "@/components/ConditionalShell";
+import { ToastContainer } from "@/components/ToastNotification";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -32,6 +33,7 @@ export default function RootLayout({
     <html lang="en" className={`${poppins.variable} h-full`} data-scroll-behavior="smooth">
       <body className="min-h-full flex flex-col font-[family-name:var(--font-poppins)]" suppressHydrationWarning>
         <ConditionalShell>{children}</ConditionalShell>
+        <ToastContainer />
       </body>
     </html>
   );

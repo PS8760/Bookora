@@ -104,8 +104,12 @@ export default function OrganiserDashboard() {
               <div className="divide-y divide-[#F0EAD8]">
                 {(data?.services ?? []).slice(0, 5).map((s) => (
                   <div key={s.id} className="flex items-center gap-3 p-4 hover:bg-[#FFFBE9] transition-colors">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 bg-[#F5EDF4]">
-                      {s.icon || "📅"}
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 bg-[#F5EDF4] overflow-hidden">
+                      {s.icon?.startsWith('/') || s.icon?.startsWith('http') ? (
+                        <img src={s.icon} alt={s.title} className="w-full h-full object-cover" />
+                      ) : (
+                        s.icon || "📅"
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-[#1A1A2E] truncate">{s.title}</p>

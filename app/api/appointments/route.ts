@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { generateSlots } from "@/lib/slots";
+import { sendNotification, NotificationTemplates } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -96,9 +98,7 @@ export async function GET(request: NextRequest) {
 
     // If public view, filter out fully booked services
     if (role === "customer" || (role === "organiser" && scope !== "own")) {
-      // "Fully booked" means it has slots but 0 capacity left.
-      // If it has NO slots at all, we still show it (it's just not scheduled yet).
-      data = data.filter((s) => s.providerSlots.length === 0 || s.availableSlots > 0);
+      data = data.filter((s) => s.availableSlots > 0);
     }
 
     return NextResponse.json({
@@ -178,6 +178,48 @@ export async function POST(request: NextRequest) {
         isPublished: isPublished ?? false,
       },
     });
+
+    // Create a default weekly schedule (Mon-Fri, 9 AM - 5 PM)
+    // This ensures services have slots available immediately
+    try {
+      const schedule = await prisma.schedule.create({
+        data: {
+          serviceId: service.id,
+          type: "WEEKLY",
+          weeklyRules: {
+            createMany: {
+              data: [
+                { dayOfWeek: 1, startMinute: 540, endMinute: 1020 }, // Monday 9:00-17:00
+                { dayOfWeek: 2, startMinute: 540, endMinute: 1020 }, // Tuesday
+                { dayOfWeek: 3, startMinute: 540, endMinute: 1020 }, // Wednesday
+                { dayOfWeek: 4, startMinute: 540, endMinute: 1020 }, // Thursday
+                { dayOfWeek: 5, startMinute: 540, endMinute: 1020 }, // Friday
+              ],
+            },
+          },
+        },
+      });
+
+      // Generate slots for the next 60 days
+      await generateSlots(service.id);
+
+      // Send notification to organiser
+      const organiser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { name: true },
+      });
+
+      if (organiser) {
+        const template = NotificationTemplates.SERVICE_CREATED(organiser.name, service.title);
+        await sendNotification({
+          userId: session.user.id,
+          ...template,
+        });
+      }
+    } catch (scheduleError) {
+      console.error("Failed to create default schedule:", scheduleError);
+      // Service is still created, organiser can configure schedule manually
+    }
 
     return NextResponse.json({ data: service }, { status: 201 });
   } catch (error) {

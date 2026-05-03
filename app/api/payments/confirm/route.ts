@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/prisma/prisma";
+import { notifyBookingConfirmed } from "@/lib/notification-triggers";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,13 @@ export async function POST(request: NextRequest) {
         },
       });
     });
+
+    // Generate push notification after final booking is done (payment confirmed)
+    if (result && result.id) {
+      notifyBookingConfirmed(result.id).catch((e) =>
+        console.error("notifyBookingConfirmed failed on payment:", e)
+      );
+    }
 
     return NextResponse.json({ data: result, message: "Payment confirmed successfully" });
   } catch (error) {

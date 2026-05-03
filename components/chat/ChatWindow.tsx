@@ -18,11 +18,12 @@ interface ChatWindowProps {
   receiverId?: string;
   currentUserId: string;
   onClose?: () => void;
+  partner?: { name: string; role: string };
 }
 
-export default function ChatWindow({ chatId: initialChatId, bookingId, receiverId, currentUserId, onClose }: ChatWindowProps) {
+export default function ChatWindow({ chatId: initialChatId, bookingId, receiverId, currentUserId, onClose, partner: initialPartner }: ChatWindowProps) {
   const [chatId, setChatId] = useState(initialChatId);
-  
+
   useEffect(() => {
     setChatId(initialChatId);
   }, [initialChatId]);
@@ -95,7 +96,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
     }
   };
 
-  const partner = messages.find(m => m.senderId !== currentUserId)?.sender;
+  const partner = messages.find(m => m.senderId !== currentUserId)?.sender || initialPartner;
 
   return (
     <div className="flex flex-col h-full bg-white rounded-2xl border border-[#E8E0D0] shadow-xl overflow-hidden">
@@ -107,7 +108,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
           </div>
           <div>
             <h3 className="font-semibold text-sm">{partner?.name || "Admin"}</h3>
-            <p className="text-[10px] opacity-80">{partner?.role || "Support"}</p>
+            <p className="text-[10px] opacity-80 uppercase tracking-tighter">{partner?.role || "Support"}</p>
           </div>
         </div>
         {onClose && (

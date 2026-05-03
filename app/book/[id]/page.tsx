@@ -15,13 +15,14 @@ import { CheckoutForm } from "@/components/payment/checkout-form";
 const STEPS = ["Select Slot", "Your Details", "Review", "Payment"];
 const DAYS  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const today = new Date();
+today.setHours(0, 0, 0, 0);
 
-function getDates() {
-  return Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    return d;
-  });
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year: number, month: number) {
+  return new Date(year, month, 1).getDay();
 }
 
 interface ServiceInfo {
@@ -69,6 +70,8 @@ export default function BookingPage() {
 
   const [step, setStep]                   = useState(0);
   const [selectedDate, setSelectedDate]   = useState<Date | null>(null);
+  const [currentMonth, setCurrentMonth]   = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedProviderId, setSelectedProviderId] = useState<string>("all");
   const [selectedSlot, setSelectedSlot]   = useState<Slot | null>(null);
   const [capacity, setCapacity]           = useState(1);
   const [form, setForm]                   = useState({ name: "", email: "", phone: "", notes: "" });
@@ -97,7 +100,21 @@ export default function BookingPage() {
   const isHiddenRef     = useRef(false);
   const selectedDateRef = useRef<Date | null>(null);
 
-  const dates = getDates();
+  const daysInMonth = getDaysInMonth(currentMonth.getFullYear(), currentMonth.getMonth());
+  const firstDay = getFirstDayOfMonth(currentMonth.getFullYear(), currentMonth.getMonth());
+  const monthDays = Array.from({ length: daysInMonth }, (_, i) => new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i + 1));
+  const blanks = Array.from({ length: firstDay }, (_, i) => i);
+
+  const prevMonth = () => {
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+    if (newMonth.getTime() >= new Date(today.getFullYear(), today.getMonth(), 1).getTime()) {
+      setCurrentMonth(newMonth);
+    }
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+  };
 
   // ── Service fetch ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -393,57 +410,105 @@ export default function BookingPage() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-[#1A1A2E] mb-3">Booking Confirmed!</h1>
-          <p className="text-[#4A4A6A] mb-8 leading-relaxed">
-            {rescheduleBookingId
-              ? "Your appointment has been rescheduled successfully."
-              : confirmedBooking.status === "PENDING"
-              ? "Your booking request has been submitted. The organiser will confirm it shortly."
-              : confirmedBooking.paymentStatus === "PENDING"
-              ? "Your booking is reserved. Complete payment to keep it confirmed."
-              : "Your appointment has been successfully booked."}
-          </p>
-          <div className="bg-white rounded-2xl border border-[#E8E0D0] p-6 text-left mb-6 shadow-[0_4px_20px_rgba(114,74,106,0.08)]">
-            <h3 className="font-semibold text-[#1A1A2E] mb-4 text-sm uppercase tracking-wide text-[#8A8AAA]">
-              Booking Details
-            </h3>
+          <h1 className="text-3xl font-bold text-[#1A1A2E] mb-3">
+            {confirmedBooking.status === "PENDING" ? "Appointment Reserved" : "Appointment Confirmed"}
+          </h1>
+          {confirmedBooking.status === "PENDING" && (
+            <p className="text-sm text-[#E65100] bg-[#FFF3E0] border border-[#FFCC80] rounded-xl px-4 py-2.5 mb-4">
+              ⏳ You will get a mail when the organiser confirms your booking
+            </p>
+          )}
+          <div className="bg-white rounded-2xl border border-[#E8E0D0] p-6 text-left mb-5 shadow-[0_4px_20px_rgba(114,74,106,0.08)]">
             <div className="space-y-3">
-              {[
-                { label: "Service",  value: service?.title ?? "—" },
-                { label: "Provider", value: service?.organiser?.name ?? "—" },
-                {
-                  label: "Date",
-                  value: slotDate
-                    ? slotDate.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-                    : selectedDate?.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) ?? "—",
-                },
-                {
-                  label: "Time",
-                  value: slotDate
-                    ? slotDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
-                    : selectedSlot?.time ?? "—",
-                },
-                {
-                  label: "Status",
-                  value: confirmedBooking.status === "PENDING" ? "Pending Confirmation" : "Confirmed",
-                  highlight: true,
-                },
-              ].map((item) => (
-                <div key={item.label} className="flex justify-between items-center py-2 border-b border-[#F0EAD8] last:border-0">
-                  <span className="text-sm text-[#8A8AAA]">{item.label}</span>
-                  <span className={`text-sm font-semibold ${item.highlight ? "text-[#2E7D32]" : "text-[#1A1A2E]"}`}>
-                    {item.value}
-                  </span>
+              <div className="flex justify-between items-start py-2 border-b border-[#F0EAD8]">
+                <span className="text-sm text-[#8A8AAA]">Time</span>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-[#1A1A2E]">
+                    {slotDate
+                      ? slotDate.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" }) + ", " +
+                        slotDate.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+                      : "—"}
+                  </p>
+                  {slotDate && (
+                    <div className="flex gap-2 mt-1.5 justify-end">
+                      {(() => {
+                        const start = slotDate.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+                        const end = new Date(slotDate.getTime() + (service?.durationMinutes ?? 30) * 60000)
+                          .toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+                        const title = encodeURIComponent(service?.title ?? "Appointment");
+                        const loc   = encodeURIComponent(service?.venue ?? "");
+                        const gCal  = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${start}/${end}&location=${loc}`;
+                        const iCal  = `data:text/calendar;charset=utf8,BEGIN:VCALENDAR%0AVERSION:2.0%0ABEGIN:VEVENT%0ADTSTART:${start}%0ADTEND:${end}%0ASUMMARY:${title}%0ALOCATION:${loc}%0AEND:VEVENT%0AEND:VCALENDAR`;
+                        return (
+                          <>
+                            <a href={gCal} target="_blank" rel="noreferrer"
+                              className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#C8E6C9] transition-colors">
+                              Google Calendar
+                            </a>
+                            <a href={iCal} download="booking.ics"
+                              className="text-[10px] font-semibold px-2 py-1 rounded-lg bg-[#E1F5FE] text-[#0277BD] hover:bg-[#B3E5FC] transition-colors">
+                              iCal / Outlook
+                            </a>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
-              ))}
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-[#F0EAD8]">
+                <span className="text-sm text-[#8A8AAA]">Duration</span>
+                <span className="text-sm font-semibold text-[#1A1A2E]">{service?.durationMinutes ?? "—"} min</span>
+              </div>
+              {capacity > 1 && (
+                <div className="flex justify-between items-center py-2 border-b border-[#F0EAD8]">
+                  <span className="text-sm text-[#8A8AAA]">No. of people</span>
+                  <span className="text-sm font-semibold text-[#1A1A2E]">{capacity}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center py-2 border-b border-[#F0EAD8]">
+                <span className="text-sm text-[#8A8AAA]">Status</span>
+                <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${
+                  confirmedBooking.status === "PENDING"
+                    ? "bg-[#FFF3E0] text-[#E65100]"
+                    : "bg-[#E8F5E9] text-[#2E7D32]"
+                }`}>
+                  {confirmedBooking.status === "PENDING" ? "Pending Confirmation" : "Confirmed ✓"}
+                </span>
+              </div>
+              {service?.venue && (
+                <div className="flex justify-between items-start py-2 border-b border-[#F0EAD8]">
+                  <span className="text-sm text-[#8A8AAA]">Venue</span>
+                  <span className="text-sm font-semibold text-[#1A1A2E] text-right max-w-[55%]">{service.venue}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center py-2">
+                <span className="text-sm text-[#8A8AAA]">Service</span>
+                <span className="text-sm font-semibold text-[#1A1A2E]">{service?.title ?? "—"}</span>
+              </div>
             </div>
+            {confirmedBooking.status !== "PENDING" && (service as any)?.confirmMessage && (
+              <div className="mt-4 pt-4 border-t border-[#F0EAD8]">
+                <p className="text-xs text-[#4A4A6A] leading-relaxed italic">💬 "{(service as any).confirmMessage}"</p>
+              </div>
+            )}
           </div>
-          <div className="flex flex-col gap-3">
+          <div className="flex gap-3 mb-4">
+            <Link href={`/book/${params.id}`}
+              className="flex-1 py-3 rounded-xl border-2 border-[#E8E0D0] text-sm font-semibold text-[#4A4A6A] hover:bg-[#FFEBEE] hover:text-[#C62828] hover:border-[#EF9A9A] transition-all text-center">
+              Cancel
+            </Link>
+            <Link href={`/book/${params.id}?reschedule=${confirmedBooking.id}`}
+              className="flex-1 py-3 rounded-xl border-2 border-[#724A6A]/30 text-sm font-semibold text-[#724A6A] hover:bg-[#F5EDF4] transition-all text-center">
+              Reschedule
+            </Link>
+          </div>
+          <div className="flex flex-col gap-3 mb-4">
             <Link href="/dashboard" className="btn-primary w-full py-3 rounded-xl text-center">
               View My Bookings
             </Link>
-            <Link href="/services" className="btn-outline w-full py-3 rounded-xl text-center">
-              Book Another
+            <Link href={`/dashboard/messages?bookingId=${confirmedBooking.id}`} className="btn-outline w-full py-3 rounded-xl text-center bg-white border-[#724A6A] text-[#724A6A] hover:bg-[#F5EDF4]">
+              Message Organiser
             </Link>
           </div>
         </div>
@@ -508,34 +573,66 @@ export default function BookingPage() {
               <div className="bg-white rounded-2xl border border-[#E8E0D0] p-6 shadow-[0_2px_12px_rgba(114,74,106,0.06)]">
                 <h2 className="text-xl font-bold text-[#1A1A2E] mb-6">Choose a Date &amp; Time</h2>
 
-                {/* Date picker */}
+                {/* Intro Message */}
+                {(service as any)?.introMessage && (
+                  <div className="mb-6 p-4 bg-[#F5EDF4]/50 border border-[#D4B8CF]/40 rounded-xl">
+                    <p className="text-sm text-[#4A4A6A] leading-relaxed italic">
+                      "{(service as any).introMessage}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Calendar */}
                 <div className="mb-6">
-                  <p className="text-sm font-semibold text-[#4A4A6A] mb-3">Select Date</p>
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-                    {dates.map((d, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setSelectedDate(d)}
-                        className={`flex-shrink-0 flex flex-col items-center p-3 rounded-xl border-2 min-w-[60px] transition-all ${
-                          selectedDate?.toDateString() === d.toDateString()
-                            ? "border-[#724A6A] bg-[#F5EDF4]"
-                            : "border-[#E8E0D0] bg-[#FFFBE9] hover:border-[#D4B8CF]"
-                        }`}
-                      >
-                        <span className="text-[10px] font-semibold text-[#8A8AAA] uppercase">
-                          {DAYS[d.getDay()]}
-                        </span>
-                        <span
-                          className={`text-lg font-bold mt-0.5 ${
-                            selectedDate?.toDateString() === d.toDateString()
-                              ? "text-[#724A6A]"
-                              : "text-[#1A1A2E]"
-                          }`}
-                        >
-                          {d.getDate()}
-                        </span>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-semibold text-[#4A4A6A]">Select Date</p>
+                    <div className="flex items-center gap-3">
+                      <button onClick={prevMonth} disabled={currentMonth.getTime() <= new Date(today.getFullYear(), today.getMonth(), 1).getTime()} className="p-1 hover:bg-[#F5EDF4] rounded-lg disabled:opacity-30 transition-colors">
+                        <ChevronLeft size={20} className="text-[#1A1A2E]" />
                       </button>
-                    ))}
+                      <span className="font-semibold text-[#1A1A2E] text-sm w-32 text-center">
+                        {currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                      </span>
+                      <button onClick={nextMonth} className="p-1 hover:bg-[#F5EDF4] rounded-lg transition-colors">
+                        <ChevronLeft size={20} className="text-[#1A1A2E] rotate-180" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#FFFBE9]/50 rounded-2xl border border-[#E8E0D0] p-4 sm:p-6 shadow-[0_2px_8px_rgba(114,74,106,0.03)]">
+                    <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+                      {DAYS.map(d => (
+                        <div key={d} className="text-center text-[10px] sm:text-xs font-semibold text-[#8A8AAA] uppercase tracking-wider py-2">
+                          {d}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                      {blanks.map(b => (
+                        <div key={`blank-${b}`} className="aspect-square" />
+                      ))}
+                      {monthDays.map((d, i) => {
+                        const isSelected = selectedDate?.toDateString() === d.toDateString();
+                        const isPast = d.getTime() < today.getTime();
+                        
+                        return (
+                          <button
+                            key={i}
+                            disabled={isPast}
+                            onClick={() => { setSelectedDate(d); setSelectedProviderId("all"); }}
+                            className={`aspect-square flex items-center justify-center rounded-xl sm:rounded-2xl text-sm sm:text-base font-medium transition-all ${
+                              isSelected
+                                ? "bg-[#724A6A] text-white shadow-[0_4px_12px_rgba(114,74,106,0.3)] ring-2 ring-[#724A6A] ring-offset-2 ring-offset-[#FFFBE9]"
+                                : isPast
+                                ? "text-[#D4B8CF] cursor-not-allowed"
+                                : "bg-white text-[#1A1A2E] border border-[#E8E0D0] hover:border-[#724A6A] hover:text-[#724A6A] shadow-[0_2px_4px_rgba(114,74,106,0.04)] hover:shadow-[0_4px_8px_rgba(114,74,106,0.1)]"
+                            }`}
+                          >
+                            {d.getDate()}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
@@ -552,6 +649,51 @@ export default function BookingPage() {
                       )}
                     </div>
 
+                    {/* Provider Picker (With) */}
+                    {!slotsLoading && slots.length > 0 && (() => {
+                      const providers = Array.from(
+                        new Map(
+                          slots
+                            .filter((s) => s.providerId && s.providerName)
+                            .map((s) => [s.providerId, s.providerName])
+                        ).entries()
+                      );
+                      
+                      if (providers.length > 0) {
+                        return (
+                          <div className="mb-4 flex items-center gap-3">
+                            <span className="text-sm font-semibold text-[#8A8AAA]">With:</span>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                onClick={() => setSelectedProviderId("all")}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                                  selectedProviderId === "all"
+                                    ? "bg-[#724A6A] text-white border-[#724A6A]"
+                                    : "bg-white text-[#4A4A6A] border-[#E8E0D0] hover:border-[#724A6A]"
+                                }`}
+                              >
+                                Anyone
+                              </button>
+                              {providers.map(([pId, pName]) => (
+                                <button
+                                  key={pId}
+                                  onClick={() => setSelectedProviderId(pId)}
+                                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all ${
+                                    selectedProviderId === pId
+                                      ? "bg-[#724A6A] text-white border-[#724A6A]"
+                                      : "bg-white text-[#4A4A6A] border-[#E8E0D0] hover:border-[#724A6A]"
+                                  }`}
+                                >
+                                  {pName}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
                     {slotsLoading && (
                       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                         {Array.from({ length: 8 }).map((_, i) => (
@@ -564,41 +706,65 @@ export default function BookingPage() {
                       <p className="text-sm text-[#C62828] bg-[#FFEBEE] px-3 py-2 rounded-lg">{slotsError}</p>
                     )}
 
-                    {!slotsLoading && !slotsError && slots.length === 0 && (
-                      <p className="text-sm text-[#8A8AAA] py-4 text-center">
-                        No available slots for this date. Try another day.
+                    {!slotsLoading && !slotsError && slots.filter(s => selectedProviderId === "all" || s.providerId === selectedProviderId).length === 0 && (
+                      <p className="text-sm text-[#8A8AAA] py-4 text-center border-2 border-dashed border-[#E8E0D0] rounded-xl bg-[#FFFBE9]/50">
+                        No available slots for this selection. Try another day or provider.
                       </p>
                     )}
 
                     {!slotsLoading && slots.length > 0 && (
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                        {slots.map((slot) => (
-                          <button
-                            key={slot.id}
-                            disabled={!slot.available || slot.remainingCapacity < 1}
-                            onClick={() => setSelectedSlot(slot)}
-                            className={`py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-all relative overflow-hidden ${
-                              updatedSlotIds.has(slot.id) ? "slot-pulse" : ""
-                            } ${
-                              !slot.available || slot.remainingCapacity < 1
-                                ? "border-[#F0EAD8] bg-[#F9F5F0] text-[#C0B8B0] cursor-not-allowed line-through"
-                                : selectedSlot?.id === slot.id
-                                ? "border-[#724A6A] bg-[#724A6A] text-white shadow-md transform scale-[1.02]"
-                                : "border-[#E8E0D0] bg-[#FFFBE9] text-[#4A4A6A] hover:border-[#724A6A] hover:text-[#724A6A] hover:bg-white"
-                            }`}
-                          >
-                            {slot.time}
-                            <span className={`block text-[9px] mt-0.5 opacity-70 ${
-                              selectedSlot?.id === slot.id 
-                                ? "text-white" 
-                                : slot.remainingCapacity <= 2 
-                                ? "text-[#C62828] font-bold" 
-                                : "text-[#724A6A]"
-                            }`}>
-                              {slot.remainingCapacity} spots left
-                            </span>
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {slots
+                          .filter(s => selectedProviderId === "all" || s.providerId === selectedProviderId)
+                          .map((slot) => {
+                            const isFlexible = slot.time.includes(" - ");
+                            return (
+                              <button
+                                key={slot.id}
+                                disabled={!slot.available || slot.remainingCapacity < 1}
+                                onClick={() => setSelectedSlot(slot)}
+                                className={`flex flex-col items-center justify-center py-3 px-3 rounded-xl text-sm font-medium border-2 transition-all relative overflow-hidden ${
+                                  updatedSlotIds.has(slot.id) ? "slot-pulse" : ""
+                                } ${
+                                  !slot.available || slot.remainingCapacity < 1
+                                    ? "border-[#F0EAD8] bg-[#F9F5F0] text-[#C0B8B0] cursor-not-allowed line-through"
+                                    : selectedSlot?.id === slot.id
+                                    ? "border-[#724A6A] bg-[#724A6A] text-white shadow-md transform scale-[1.02]"
+                                    : isFlexible 
+                                      ? "border-[#D4B8CF]/50 bg-[#F5EDF4]/30 text-[#4A4A6A] hover:border-[#724A6A] hover:text-[#724A6A] hover:bg-[#F5EDF4]"
+                                      : "border-[#E8E0D0] bg-[#FFFBE9] text-[#4A4A6A] hover:border-[#724A6A] hover:text-[#724A6A] hover:bg-white"
+                                }`}
+                              >
+                                {isFlexible ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span>{slot.time.split(" - ")[0]}</span>
+                                    <span className="opacity-50">→</span>
+                                    <span>{slot.time.split(" - ")[1]}</span>
+                                  </div>
+                                ) : (
+                                  <span>{slot.time}</span>
+                                )}
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`text-[10px] font-bold ${
+                                    selectedSlot?.id === slot.id 
+                                      ? "text-white/90" 
+                                      : slot.remainingCapacity <= 2 
+                                      ? "text-[#C62828]" 
+                                      : "text-[#724A6A]"
+                                  }`}>
+                                    {slot.remainingCapacity} left
+                                  </span>
+                                  {slot.providerName && selectedProviderId === "all" && (
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                                      selectedSlot?.id === slot.id ? "bg-white/20 text-white" : "bg-[#E8E0D0] text-[#8A8AAA]"
+                                    }`}>
+                                      {slot.providerName}
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
                       </div>
                     )}
                   </div>
@@ -898,8 +1064,12 @@ export default function BookingPage() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-2xl border border-[#E8E0D0] p-5 shadow-[0_2px_12px_rgba(114,74,106,0.06)] sticky top-24">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-[#F5EDF4] flex items-center justify-center text-2xl text-[#724A6A]">
-                  {service?.icon || <Calendar size={24} />}
+                <div className="w-12 h-12 rounded-xl bg-[#F5EDF4] flex items-center justify-center text-2xl text-[#724A6A] overflow-hidden">
+                  {service?.icon?.startsWith('/') || service?.icon?.startsWith('http') ? (
+                    <img src={service.icon} alt={service.title} className="w-full h-full object-cover" />
+                  ) : (
+                    service?.icon || <Calendar size={24} />
+                  )}
                 </div>
                 <div>
                   <h3 className="font-semibold text-[#1A1A2E] text-sm leading-tight">{service?.title ?? "—"}</h3>

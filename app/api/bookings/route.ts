@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { invalidateSlotCache } from "@/lib/slot-cache";
 import { stripe } from "@/lib/stripe";
+import { notifyBookingConfirmed, notifyBookingPending, notifyOrganiserNewBooking } from "@/lib/notification-triggers";
 
 export const dynamic = "force-dynamic";
 
@@ -250,6 +251,19 @@ export async function POST(request: NextRequest) {
               userAgent: request.headers.get("user-agent") ?? undefined,
             },
           },
+          conversations: {
+            create: [
+              {
+                type: "BOOKING",
+                participants: {
+                  create: [
+                    { userId: user.id },
+                    { userId: slot.service.organiserId }
+                  ]
+                }
+              }
+            ]
+          },
           notifications: {
             create: [
               {
@@ -331,6 +345,24 @@ export async function POST(request: NextRequest) {
     const slotDate = result.slotStartTime.toISOString().slice(0, 10);
     invalidateSlotCache(serviceId, slotDate);
 
+    // ── Fire PUSH notifications (non-fatal, runs after response) ─────────────
+    const bookingId = result.booking.id;
+    const bookingStatus = result.booking.status;
+    // Notify organiser of new booking
+    notifyOrganiserNewBooking(bookingId).catch((e) =>
+      console.error("notifyOrganiserNewBooking failed:", e)
+    );
+    // Notify customer
+    if (bookingStatus === "CONFIRMED") {
+      notifyBookingConfirmed(bookingId).catch((e) =>
+        console.error("notifyBookingConfirmed failed:", e)
+      );
+    } else {
+      notifyBookingPending(bookingId).catch((e) =>
+        console.error("notifyBookingPending failed:", e)
+      );
+    }
+
     return NextResponse.json({ 
       data: result.booking,
       clientSecret,
@@ -365,7 +397,7 @@ export async function POST(request: NextRequest) {
       {
         error: {
           code:    httpStatus[code] ? code : "INTERNAL_ERROR",
-          message: humanMessage[code] ?? "Failed to create booking",
+          message: humanMessage[code] ?? (error instanceof Error ? error.message : "Failed to create booking"),
         },
       },
       { status: httpStatus[code] ?? 500 }

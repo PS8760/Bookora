@@ -1,0 +1,7 @@
+// This is a placeholder - you'll need to add an actual notification sound file
+// You can download iOS-style notification sounds from:
+// 1. https://notificationsounds.com/
+// 2. https://www.zedge.net/
+// 3. Or use the iOS tri-tone sound
+
+// For now, we'll use the Web Audio API to generate a simple tri-tone sound

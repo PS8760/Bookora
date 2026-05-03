@@ -225,6 +225,8 @@ model Service {
   assignmentMode  AssignmentMode  @default(AUTOMATIC)
   maxPerSlot      Int             @default(1)
   venue           String?
+  introMessage    String?         // Shown on booking intro page (Misc tab)
+  confirmMessage  String?         // Shown on booking confirmation page (Misc tab)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?

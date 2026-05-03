@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { invalidateSlotCacheForSlot } from "@/lib/slot-cache";
+import { notifyBookingCancelled } from "@/lib/notification-triggers";
 
 export const dynamic = "force-dynamic";
 
@@ -100,6 +101,11 @@ export async function POST(
     if (result.serviceId && result.slotStartTime) {
       invalidateSlotCacheForSlot(result.serviceId, new Date(result.slotStartTime));
     }
+
+    // Fire PUSH notification (non-fatal)
+    notifyBookingCancelled(id).catch((e) =>
+      console.error("notifyBookingCancelled failed:", e)
+    );
 
     return NextResponse.json({ data: result, message: "Booking cancelled" });
   } catch (err: any) {

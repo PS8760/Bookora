@@ -209,10 +209,14 @@ function ServicesContent() {
                   <div className="p-6 pb-4 flex-1">
                     <div className="flex items-start gap-4 mb-4">
                       <div
-                        className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
+                        className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden"
                         style={{ background: colors.bg }}
                       >
-                        {s.icon || "📅"}
+                        {s.icon?.startsWith('/') || s.icon?.startsWith('http') ? (
+                          <img src={s.icon} alt={s.title} className="w-full h-full object-cover" />
+                        ) : (
+                          s.icon || "📅"
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-[#1A1A2E] text-base leading-tight">{s.title}</h3>
