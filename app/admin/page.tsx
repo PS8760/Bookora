@@ -30,6 +30,7 @@ interface AdminData {
     totalServices: number; publishedServices: number;
     totalBookings: number; monthBookings: number;
     pendingBookings: number; confirmedBookings: number; cancelledBookings: number;
+    virtualBookings: number; physicalBookings: number;
     revenue: number;
   };
   recentUsers: any[];
@@ -99,11 +100,13 @@ export default function AdminDashboard() {
 
         {/* Booking status breakdown */}
         {!loading && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               { label: "Pending",   value: data?.stats.pendingBookings ?? 0,   bg: "#FFF3E0", text: "#E65100" },
               { label: "Confirmed", value: data?.stats.confirmedBookings ?? 0, bg: "#E8F5E9", text: "#2E7D32" },
               { label: "Cancelled", value: data?.stats.cancelledBookings ?? 0, bg: "#FFEBEE", text: "#C62828" },
+              { label: "Virtual",   value: data?.stats.virtualBookings ?? 0,   bg: "#E3F2FD", text: "#1565C0" },
+              { label: "Physical",  value: data?.stats.physicalBookings ?? 0,  bg: "#F3E5F5", text: "#6A1B9A" },
             ].map((s) => (
               <div key={s.label} className="bg-white rounded-2xl border border-[#E8E0D0] p-4 text-center shadow-[0_2px_8px_rgba(114,74,106,0.06)]">
                 <p className="text-2xl font-bold" style={{ color: s.text }}>{s.value}</p>
@@ -188,10 +191,20 @@ export default function AdminDashboard() {
                         {b.customer?.name?.split(" ").map((n: string) => n[0]).join("") ?? "?"}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#1A1A2E] truncate">{b.customer?.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-semibold text-[#1A1A2E] truncate">{b.customer?.name}</p>
+                          <span className="text-[10px] text-[#8A8AAA]">• by {b.organiser}</span>
+                        </div>
                         <p className="text-xs text-[#8A8AAA] truncate">{b.service?.title} · {b.date}</p>
                       </div>
-                      <span className="badge text-[10px]" style={{ background: s.bg, color: s.text }}>{s.label}</span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="badge text-[10px]" style={{ background: s.bg, color: s.text }}>{s.label}</span>
+                        {b.platform !== "Offline" && (
+                          <span className="text-[9px] font-bold text-[#724A6A] px-1 bg-[#F5EDF4] rounded border border-[#D4B8CF]">
+                            {b.platform}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

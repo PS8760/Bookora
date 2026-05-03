@@ -9,6 +9,7 @@ interface Booking {
   id: string;
   status: string;
   paymentStatus: string;
+  selectedMode: string | null;
   notes: string | null;
   createdAt: string;
   confirmedAt: string | null;
@@ -48,6 +49,7 @@ function fmtTime(iso: string) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function OrganiserBookingsPage() {
   const [filter, setFilter]               = useState("all");
+  const [modeFilter, setModeFilter]       = useState("all");
   const [search, setSearch]               = useState("");
   const [debouncedSearch, setDebounced]   = useState("");
   const [page, setPage]                   = useState(1);
@@ -63,9 +65,10 @@ export default function OrganiserBookingsPage() {
   const buildUrl = useCallback(() => {
     const p = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
     if (filter !== "all") p.set("status", filter);
+    if (modeFilter !== "all") p.set("mode", modeFilter);
     if (debouncedSearch) p.set("search", debouncedSearch);
     return `/api/organiser/bookings?${p}`;
-  }, [page, filter, debouncedSearch]);
+  }, [page, filter, modeFilter, debouncedSearch]);
 
   const { data, error, mutate, isLoading } = useSWR(
     buildUrl,
@@ -151,6 +154,21 @@ export default function OrganiserBookingsPage() {
               );
             })}
           </div>
+          <div className="flex gap-2 flex-wrap ml-auto">
+            {["all", "VIRTUAL", "PHYSICAL"].map((m) => (
+              <button
+                key={m}
+                onClick={() => { setModeFilter(m); setPage(1); }}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  modeFilter === m
+                    ? "bg-[#1A1A2E] text-white shadow-[0_2px_8px_rgba(26,26,46,0.3)]"
+                    : "bg-[#FFFBE9] text-[#4A4A6A] border border-[#E8E0D0] hover:border-[#1A1A2E] hover:text-[#1A1A2E]"
+                }`}
+              >
+                {m === "all" ? "All Modes" : m === "VIRTUAL" ? "Virtual" : "Physical"}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Table */}
@@ -177,7 +195,7 @@ export default function OrganiserBookingsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-[#E8E0D0] bg-[#FFFBE9]">
-                    {["Customer", "Service", "Date & Time", "Status", "Payment", "Actions"].map((h) => (
+                    {["Customer", "Service", "Mode", "Date & Time", "Status", "Payment", "Actions"].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-[#8A8AAA] uppercase tracking-wide whitespace-nowrap">
                         {h}
                       </th>
@@ -211,6 +229,17 @@ export default function OrganiserBookingsPage() {
                         {/* Service */}
                         <td className="px-4 py-3">
                           <p className="text-sm text-[#1A1A2E] whitespace-nowrap">{b.service?.title ?? "—"}</p>
+                        </td>
+
+                        {/* Mode */}
+                        <td className="px-4 py-3">
+                          {b.selectedMode === "VIRTUAL" ? (
+                            <span className="badge text-[11px] bg-[#E3F2FD] text-[#1565C0]">💻 Virtual</span>
+                          ) : b.selectedMode === "PHYSICAL" ? (
+                            <span className="badge text-[11px] bg-[#F3E5F5] text-[#6A1B9A]">📍 Physical</span>
+                          ) : (
+                            <span className="badge text-[11px] bg-[#ECEFF1] text-[#546E7A]">Unknown</span>
+                          )}
                         </td>
 
                         {/* Date & Time */}

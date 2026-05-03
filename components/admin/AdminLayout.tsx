@@ -7,15 +7,17 @@ import { useSession } from "@/lib/auth-client";
 import { signOutAndRedirect } from "@/lib/logout-client";
 import BookoraLogo from "@/components/BookoraLogo";
 
-import { LayoutDashboard, Users, Calendar, Building2, BarChart3, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Users, Calendar, Building2, BarChart3, MessageSquare, Video, FlaskConical } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutDashboard size={20} />, exact: true },
   { href: "/admin/users", label: "Users", icon: <Users size={20} />, exact: false },
-  { href: "/admin/bookings", label: "All Bookings", icon: <Calendar size={20} />, exact: false },
-  { href: "/admin/messages", label: "Messages", icon: <MessageSquare size={20} />, exact: false },
-  { href: "/admin/services", label: "Services", icon: <Building2 size={20} />, exact: false },
-  { href: "/admin/reports", label: "Reports", icon: <BarChart3 size={20} />, exact: false },
+  { href: "/admin/bookings",         label: "All Bookings",     icon: <Calendar   size={20} />, exact: false },
+  { href: "/admin/virtual-meetings", label: "Virtual Meetings", icon: <Video      size={20} />, exact: false },
+  { href: "/admin/messages",         label: "Messages",         icon: <MessageSquare size={20} />, exact: false },
+  { href: "/admin/services",         label: "Services",        icon: <Building2    size={20} />, exact: false },
+  { href: "/admin/reports",          label: "Reports",         icon: <BarChart3    size={20} />, exact: false },
+  { href: "/admin/test-panel",       label: "Test Panel",      icon: <FlaskConical size={20} />, exact: false },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -31,6 +31,8 @@ export async function GET(request: NextRequest) {
       pendingBookings,
       confirmedBookings,
       cancelledBookings,
+      virtualBookings,
+      physicalBookings,
       recentUsers,
       recentBookings,
     ] = await Promise.all([
@@ -44,6 +46,8 @@ export async function GET(request: NextRequest) {
       prisma.booking.count({ where: { status: "PENDING" } }),
       prisma.booking.count({ where: { status: "CONFIRMED" } }),
       prisma.booking.count({ where: { status: "CANCELLED" } }),
+      prisma.booking.count({ where: { selectedMode: "VIRTUAL" } }),
+      prisma.booking.count({ where: { selectedMode: "PHYSICAL" } }),
       prisma.user.findMany({
         where: { deletedAt: null },
         select: {
@@ -56,8 +60,15 @@ export async function GET(request: NextRequest) {
       prisma.booking.findMany({
         include: {
           customer: { select: { id: true, name: true, email: true } },
-          service: { select: { id: true, title: true } },
+          service: { 
+            select: { 
+              id: true, 
+              title: true,
+              organiser: { select: { name: true } }
+            } 
+          },
           providerSlot: { select: { startTime: true } },
+          virtualMeeting: { select: { platform: true, status: true } },
         },
         orderBy: { createdAt: "desc" },
         take: 8,
@@ -82,6 +93,8 @@ export async function GET(request: NextRequest) {
           pendingBookings,
           confirmedBookings,
           cancelledBookings,
+          virtualBookings,
+          physicalBookings,
           revenue: Number(revenueResult._sum.amount ?? 0),
         },
         recentUsers: recentUsers.map((u) => ({
@@ -99,10 +112,14 @@ export async function GET(request: NextRequest) {
           id: b.id,
           customer: b.customer,
           service: b.service,
+          organiser: (b.service as any)?.organiser?.name || "N/A",
+          selectedMode: b.selectedMode || "Unknown",
+          platform: b.virtualMeeting?.platform || "Offline",
           date: new Date(b.providerSlot.startTime).toLocaleDateString("en-IN", {
             day: "numeric", month: "short", year: "numeric",
           }),
           status: b.status.toLowerCase(),
+          meetingStatus: b.virtualMeeting?.status || "N/A",
         })),
         user: {
           name: session.user.name,

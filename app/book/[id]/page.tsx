@@ -37,6 +37,15 @@ interface ServiceInfo {
   maxPerSlot: number;
   organiser: { name: string };
   questions?: Question[];
+  deliveryMode: "VIRTUAL" | "PHYSICAL" | "HYBRID";
+  virtualPlatform: string | null;
+  physicalAddress: string | null;
+  physicalRoom: string | null;
+  mapsLink: string | null;
+  virtualPrice: number | null;
+  physicalPrice: number | null;
+  virtualDuration: number | null;
+  physicalDuration: number | null;
 }
 
 interface Question {
@@ -71,6 +80,7 @@ export default function BookingPage() {
   const [selectedDate, setSelectedDate]   = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot]   = useState<Slot | null>(null);
   const [capacity, setCapacity]           = useState(1);
+  const [selectedMode, setSelectedMode]   = useState<"VIRTUAL" | "PHYSICAL" | null>(null);
   const [form, setForm]                   = useState({ name: "", email: "", phone: "", notes: "" });
   const [answers, setAnswers]             = useState<Record<string, { answerText?: string; selectedOptionId?: string }>>({});
   const [confirmed, setConfirmed]         = useState(false);
@@ -107,8 +117,13 @@ export default function BookingPage() {
     fetch(`/api/appointments/${params.id}${query}`)
       .then((r) => r.json())
       .then((j) => {
-        if (j.data) setService(j.data);
-        else setServiceError(j.error?.message ?? "Service not found.");
+        if (j.data) {
+          setService(j.data);
+          if (j.data.deliveryMode === "VIRTUAL") setSelectedMode("VIRTUAL");
+          else if (j.data.deliveryMode === "PHYSICAL") setSelectedMode("PHYSICAL");
+        } else {
+          setServiceError(j.error?.message ?? "Service not found.");
+        }
       })
       .catch(() => setServiceError("Failed to load service."))
       .finally(() => setServiceLoading(false));
@@ -245,6 +260,7 @@ export default function BookingPage() {
               email: form.email,
               phone: form.phone,
               notes: form.notes,
+              selectedMode,
             },
             questionAnswers: Object.entries(answers).map(([questionId, answer]) => ({
               questionId,
@@ -309,9 +325,15 @@ export default function BookingPage() {
   };
 
   const formatPrice = () => {
-    if (!service?.advancePayment || !service?.paymentAmount) return "Free";
+    if (!service) return "Free";
+    
+    let priceStr = service.paymentAmount;
+    if (selectedMode === "VIRTUAL" && service.virtualPrice) priceStr = String(service.virtualPrice);
+    if (selectedMode === "PHYSICAL" && service.physicalPrice) priceStr = String(service.physicalPrice);
+
+    if (!service.advancePayment || !priceStr) return "Free";
     const sym = service.currency === "INR" ? "₹" : service.currency;
-    return `${sym}${parseFloat(service.paymentAmount).toLocaleString("en-IN")}`;
+    return `${sym}${parseFloat(priceStr).toLocaleString("en-IN")}`;
   };
 
   // Loading state
@@ -506,6 +528,36 @@ export default function BookingPage() {
             {/* Step 0: Select Slot */}
             {step === 0 && (
               <div className="bg-white rounded-2xl border border-[#E8E0D0] p-6 shadow-[0_2px_12px_rgba(114,74,106,0.06)]">
+                {service?.deliveryMode === "HYBRID" && (
+                  <div className="mb-6 pb-6 border-b border-[#F0EAD8]">
+                    <h2 className="text-xl font-bold text-[#1A1A2E] mb-4">Choose Appointment Mode</h2>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setSelectedMode("VIRTUAL")}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${
+                          selectedMode === "VIRTUAL" 
+                            ? "border-[#724A6A] bg-[#F5EDF4]" 
+                            : "border-[#E8E0D0] bg-[#FFFBE9] hover:border-[#D4B8CF]"
+                        }`}
+                      >
+                        <p className="font-bold text-[#1A1A2E] mb-1">💻 Virtual Meeting</p>
+                        <p className="text-xs text-[#8A8AAA]">Join online via {service.virtualPlatform === "MEET" ? "Google Meet" : service.virtualPlatform === "ZOOM" ? "Zoom" : service.virtualPlatform === "TEAMS" ? "Teams" : "Custom Link"}</p>
+                      </button>
+                      <button
+                        onClick={() => setSelectedMode("PHYSICAL")}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${
+                          selectedMode === "PHYSICAL" 
+                            ? "border-[#724A6A] bg-[#F5EDF4]" 
+                            : "border-[#E8E0D0] bg-[#FFFBE9] hover:border-[#D4B8CF]"
+                        }`}
+                      >
+                        <p className="font-bold text-[#1A1A2E] mb-1">📍 Physical Visit</p>
+                        <p className="text-xs text-[#8A8AAA] line-clamp-1">{service.physicalAddress || "At the venue"}</p>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <h2 className="text-xl font-bold text-[#1A1A2E] mb-6">Choose a Date &amp; Time</h2>
 
                 {/* Date picker */}
@@ -627,7 +679,7 @@ export default function BookingPage() {
                 )}
 
                 <button
-                  disabled={!selectedDate || !selectedSlot}
+                  disabled={!selectedDate || !selectedSlot || (service?.deliveryMode === "HYBRID" && !selectedMode)}
                   onClick={() => setStep(1)}
                   className="btn-primary w-full py-3 rounded-xl mt-6 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -774,6 +826,7 @@ export default function BookingPage() {
                   {[
                     { label: "Service",  value: service?.title ?? "—" },
                     { label: "Provider", value: service?.organiser?.name ?? "—" },
+                    { label: "Mode",     value: selectedMode === "VIRTUAL" ? "Virtual Meeting" : "Physical Visit", highlight: true },
                     {
                       label: "Date",
                       value: selectedDate

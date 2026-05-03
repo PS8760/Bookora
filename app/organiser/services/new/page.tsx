@@ -11,7 +11,16 @@ export default function NewServicePage() {
     title: "", description: "", duration: "30", type: "USER_BASED",
     schedule: "WEEKLY", assignment: "AUTOMATIC", maxCapacity: "1",
     manualConfirm: false, advancePayment: false, paymentAmount: "",
-    venue: "",
+    manualConfirm: false, advancePayment: false, paymentAmount: "",
+    deliveryMode: "PHYSICAL",
+    virtualPlatform: "MEET",
+    physicalAddress: "",
+    physicalRoom: "",
+    mapsLink: "",
+    virtualPrice: "",
+    physicalPrice: "",
+    virtualDuration: "",
+    physicalDuration: "",
   });
   const [step, setStep] = useState(0);
   const STEPS = ["Basic Info", "Schedule", "Booking Rules", "Questions"];
@@ -28,6 +37,15 @@ export default function NewServicePage() {
           maxPerSlot: Number(form.maxCapacity),
           paymentAmount: form.advancePayment && form.paymentAmount ? Number(form.paymentAmount) : null,
           isPublished: publish,
+          deliveryMode: form.deliveryMode,
+          virtualPlatform: form.virtualPlatform,
+          physicalAddress: form.physicalAddress,
+          physicalRoom: form.physicalRoom,
+          mapsLink: form.mapsLink,
+          virtualPrice: form.virtualPrice ? Number(form.virtualPrice) : null,
+          physicalPrice: form.physicalPrice ? Number(form.physicalPrice) : null,
+          virtualDuration: form.virtualDuration ? Number(form.virtualDuration) : null,
+          physicalDuration: form.physicalDuration ? Number(form.physicalDuration) : null,
         }),
       });
       if (res.ok) {
@@ -210,6 +228,80 @@ export default function NewServicePage() {
                     </button>
                   </div>
                 ))}
+
+                {form.type === "USER_BASED" && (
+                  <div className="flex flex-col gap-4 p-4 bg-[#F5EDF4] rounded-xl border border-[#D4B8CF]">
+                    <div>
+                      <p className="text-sm font-semibold text-[#724A6A] mb-2">Service Delivery Mode</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {[
+                          { value: "VIRTUAL", label: "Virtual Only", icon: "💻" },
+                          { value: "PHYSICAL", label: "Physical Only", icon: "📍" },
+                          { value: "HYBRID", label: "Hybrid", icon: "🔄" },
+                        ].map((m) => (
+                          <button
+                            key={m.value}
+                            type="button"
+                            onClick={() => setForm({ ...form, deliveryMode: m.value })}
+                            className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all ${
+                              form.deliveryMode === m.value
+                                ? "border-[#724A6A] bg-white text-[#724A6A]"
+                                : "border-transparent bg-[#FFFBE9] text-[#4A4A6A] hover:border-[#D4B8CF]"
+                            }`}
+                          >
+                            <span className="text-xl mb-1">{m.icon}</span>
+                            <span className="text-xs font-bold">{m.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {(form.deliveryMode === "VIRTUAL" || form.deliveryMode === "HYBRID") && (
+                      <div className="flex flex-col gap-2 p-3 bg-white rounded-lg border border-[#D4B8CF]">
+                        <p className="text-xs font-bold text-[#724A6A]">Virtual Settings</p>
+                        <div className="flex gap-2">
+                          {["MEET", "ZOOM", "TEAMS", "CUSTOM"].map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setForm({ ...form, virtualPlatform: p })}
+                              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                                form.virtualPlatform === p
+                                  ? "bg-[#724A6A] text-white border-[#724A6A]"
+                                  : "bg-white text-[#724A6A] border-[#D4B8CF] hover:border-[#724A6A]"
+                              }`}
+                            >
+                              {p === "MEET" ? "Google Meet" : p === "ZOOM" ? "Zoom" : p === "TEAMS" ? "MS Teams" : "Custom Link"}
+                            </button>
+                          ))}
+                        </div>
+                        {form.deliveryMode === "HYBRID" && (
+                          <div className="flex gap-2 mt-2">
+                            <input type="number" className="input-base text-xs flex-1" placeholder="Virtual Price (optional)" value={form.virtualPrice} onChange={(e) => setForm({ ...form, virtualPrice: e.target.value })} />
+                            <input type="number" className="input-base text-xs flex-1" placeholder="Virtual Duration (mins, opt)" value={form.virtualDuration} onChange={(e) => setForm({ ...form, virtualDuration: e.target.value })} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {(form.deliveryMode === "PHYSICAL" || form.deliveryMode === "HYBRID") && (
+                      <div className="flex flex-col gap-2 p-3 bg-white rounded-lg border border-[#D4B8CF]">
+                        <p className="text-xs font-bold text-[#724A6A]">Physical Venue Settings</p>
+                        <input type="text" className="input-base text-sm" placeholder="Full Address" value={form.physicalAddress} onChange={(e) => setForm({ ...form, physicalAddress: e.target.value })} />
+                        <div className="flex gap-2">
+                          <input type="text" className="input-base text-sm flex-1" placeholder="Room / Cabin" value={form.physicalRoom} onChange={(e) => setForm({ ...form, physicalRoom: e.target.value })} />
+                          <input type="text" className="input-base text-sm flex-1" placeholder="Maps Link (optional)" value={form.mapsLink} onChange={(e) => setForm({ ...form, mapsLink: e.target.value })} />
+                        </div>
+                        {form.deliveryMode === "HYBRID" && (
+                          <div className="flex gap-2 mt-1">
+                            <input type="number" className="input-base text-xs flex-1" placeholder="Physical Price (optional)" value={form.physicalPrice} onChange={(e) => setForm({ ...form, physicalPrice: e.target.value })} />
+                            <input type="number" className="input-base text-xs flex-1" placeholder="Physical Duration (mins, opt)" value={form.physicalDuration} onChange={(e) => setForm({ ...form, physicalDuration: e.target.value })} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {form.advancePayment && (

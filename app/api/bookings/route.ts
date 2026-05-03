@@ -5,6 +5,7 @@ import prisma from "@/prisma/prisma";
 import { invalidateSlotCache } from "@/lib/slot-cache";
 import { stripe } from "@/lib/stripe";
 import { sendBookingConfirmationEmail } from "@/lib/email";
+import { createVirtualMeeting } from "@/lib/virtual-meeting";
 
 export const dynamic = "force-dynamic";
 
@@ -219,6 +220,8 @@ export async function POST(request: NextRequest) {
           status,
           paymentStatus,
           confirmedAt:   status === "CONFIRMED" ? new Date() : null,
+          selectedMode:  formAnswers.selectedMode || (slot.service.deliveryMode === "HYBRID" ? "PHYSICAL" : slot.service.deliveryMode),
+          venueSnapshot: slot.service.physicalAddress || slot.service.venue,
           notes: JSON.stringify({
             phone:             formAnswers.phone ?? null,
             notes:             formAnswers.notes ?? null,
@@ -284,8 +287,47 @@ export async function POST(request: NextRequest) {
         include: {
           payments: true,
           service: true,
+          virtualMeeting: true,
         },
       });
+
+      // ── Create Virtual Meeting if enabled ───────────────────────────────
+      const isVirtual = slot.service.deliveryMode === "VIRTUAL" || (slot.service.deliveryMode === "HYBRID" && formAnswers.selectedMode === "VIRTUAL");
+      if (slot.service.type === "USER_BASED" && isVirtual) {
+        try {
+          const meeting = await createVirtualMeeting({
+            platform: (slot.service.virtualPlatform as any) || "MEET",
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            title: slot.service.title,
+            bookingId: booking.id
+          });
+
+          await tx.virtualMeeting.create({
+            data: {
+              bookingId: booking.id,
+              platform: meeting.platform,
+              meetingLink: meeting.meetingLink,
+              meetingId: meeting.meetingId,
+              password: meeting.password,
+              status: meeting.status,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+            }
+          });
+          
+          // Re-fetch booking with virtual meeting
+          return { 
+            booking: await tx.booking.findUnique({ 
+              where: { id: booking.id }, 
+              include: { payments: true, service: true, virtualMeeting: true } 
+            }), 
+            slotStartTime: slot.startTime 
+          };
+        } catch (vError) {
+          console.error("Virtual meeting creation failed, but booking preserved:", vError);
+        }
+      }
 
       return { booking, slotStartTime: slot.startTime };
     }, {
@@ -345,6 +387,9 @@ export async function POST(request: NextRequest) {
           serviceName: (result.booking as any).service.title,
           startTime: result.slotStartTime,
           bookingId: result.booking.id,
+          meetingLink: (result.booking as any).virtualMeeting?.meetingLink,
+          selectedMode: (result.booking as any).selectedMode,
+          venueSnapshot: (result.booking as any).venueSnapshot,
         });
       } catch (emailError) {
         console.error("Failed to send confirmation email:", emailError);

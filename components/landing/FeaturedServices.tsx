@@ -3,7 +3,7 @@
 import Link from "next/link";
 import useSWR from "swr";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import { CalendarDays, Clock, Users, ArrowRight } from "lucide-react";
+import { CalendarDays, Clock, Users, ArrowRight, Inbox } from "lucide-react";
 
 const CATEGORY_COLORS: Record<string, { bg: string; accent: string }> = {
   Health:    { bg: "#E8F5E9", accent: "#2E7D32" },
