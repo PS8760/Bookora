@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
          </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0">
         {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
         <aside className={`fixed lg:static top-14 bottom-0 left-0 z-40 w-56 bg-white border-r border-[#E8E0D0] flex flex-col py-4 transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>

@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { getSessionWithRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/dashboard/organiser — stats + recent bookings for the organiser
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session) {
+    const user = await getSessionWithRole(request);
+
+    if (!user) {
       return NextResponse.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 });
     }
-    const role = (session.user as { role?: string }).role;
-    if (role !== "organiser" && role !== "admin") {
+
+    // Role now always read from DB — fixes better-auth additionalFields not in session
+    if (user.role !== "organiser" && user.role !== "admin") {
       return NextResponse.json({ error: { code: "FORBIDDEN" } }, { status: 403 });
     }
 
-    const organiserId = session.user.id;
+    const organiserId = user.userId;
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -30,12 +32,12 @@ export async function GET(request: NextRequest) {
       prisma.service.findMany({
         where: { organiserId, deletedAt: null },
         include: {
-          _count: { 
-            select: { 
+          _count: {
+            select: {
               bookings: {
                 where: { status: { in: ["PENDING", "CONFIRMED"] } }
-              } 
-            } 
+              }
+            }
           },
           providerSlots: {
             where: { isActive: true, startTime: { gte: now } },
@@ -44,24 +46,24 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.booking.count({ 
-        where: { 
+      prisma.booking.count({
+        where: {
           service: { organiserId },
           status: { in: ["PENDING", "CONFIRMED"] }
-        } 
+        }
       }),
       prisma.booking.count({
-        where: { 
-          service: { organiserId }, 
+        where: {
+          service: { organiserId },
           status: { in: ["PENDING", "CONFIRMED"] },
-          createdAt: { gte: startOfMonth } 
+          createdAt: { gte: startOfMonth }
         },
       }),
       prisma.booking.count({
         where: { service: { organiserId }, status: "PENDING" },
       }),
       prisma.booking.findMany({
-        where: { 
+        where: {
           service: { organiserId },
           status: { not: "CANCELLED" }
         },
@@ -134,9 +136,9 @@ export async function GET(request: NextRequest) {
           } : null,
         })),
         user: {
-          name: session.user.name,
-          email: session.user.email,
-          image: session.user.image,
+          name: user.name,
+          email: user.email,
+          image: user.image,
         },
       },
     });

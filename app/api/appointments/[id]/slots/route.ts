@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { getAvailableSlots } from "@/lib/slots";
 import { getCachedSlots, setCachedSlots } from "@/lib/slot-cache";
+import { getSessionWithRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +22,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
+    const user = await getSessionWithRole(request);
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: { code: "UNAUTHORIZED", message: "Authentication required" } },
         { status: 401 }
@@ -44,7 +44,7 @@ export async function GET(
       );
     }
 
-    const role = (session.user as { role?: string }).role ?? "customer";
+    const role = user.role;
 
     // Permission check — single DB query
     const service = await prisma.service.findFirst({
@@ -67,7 +67,7 @@ export async function GET(
           { status: 403 }
         );
       }
-    } else if (role === "organiser" && service.organiserId !== session.user.id) {
+    } else if (role === "organiser" && service.organiserId !== user.userId) {
       return NextResponse.json(
         { error: { code: "FORBIDDEN", message: "Access denied" } },
         { status: 403 }

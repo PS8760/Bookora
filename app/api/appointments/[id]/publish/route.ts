@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { generateSlots, invalidateSlots } from "@/lib/slots";
 import { invalidateServiceCache } from "@/lib/slot-cache";
+import { getSessionWithRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -12,18 +12,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    const user = await getSessionWithRole(request);
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: { code: "UNAUTHORIZED", message: "Authentication required" } },
         { status: 401 }
       );
     }
 
-    const role = (session.user as { role?: string }).role ?? "customer";
+    const role = user.role;
     if (!["organiser", "admin"].includes(role)) {
       return NextResponse.json(
         { error: { code: "FORBIDDEN", message: "Insufficient permissions" } },
@@ -51,7 +49,7 @@ export async function POST(
       );
     }
 
-    if (role === "organiser" && appointment.organiserId !== session.user.id) {
+    if (role === "organiser" && appointment.organiserId !== user.userId) {
       return NextResponse.json(
         { error: { code: "FORBIDDEN", message: "Access denied" } },
         { status: 403 }
@@ -126,18 +124,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth.api.getSession({
-      headers: request.headers,
-    });
+    const user = await getSessionWithRole(request);
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: { code: "UNAUTHORIZED", message: "Authentication required" } },
         { status: 401 }
       );
     }
 
-    const role = (session.user as { role?: string }).role ?? "customer";
+    const role = user.role;
     if (!["organiser", "admin"].includes(role)) {
       return NextResponse.json(
         { error: { code: "FORBIDDEN", message: "Insufficient permissions" } },
@@ -158,7 +154,7 @@ export async function DELETE(
       );
     }
 
-    if (role === "organiser" && appointment.organiserId !== session.user.id) {
+    if (role === "organiser" && appointment.organiserId !== user.userId) {
       return NextResponse.json(
         { error: { code: "FORBIDDEN", message: "Access denied" } },
         { status: 403 }

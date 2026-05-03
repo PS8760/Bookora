@@ -1,22 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { getSessionWithRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/organiser/bookings — bookings for the organiser's own services
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
+    const user = await getSessionWithRole(request);
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: { code: "UNAUTHORIZED", message: "Authentication required" } },
         { status: 401 }
       );
     }
 
-    const role = (session.user as { role?: string }).role ?? "customer";
+    const role = user.role;
     if (role !== "organiser" && role !== "admin") {
       return NextResponse.json(
         { error: { code: "FORBIDDEN", message: "Organiser access required" } },
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // Organisers only see bookings for their own services
     if (role === "organiser") {
-      where.service = { organiserId: session.user.id };
+      where.service = { organiserId: user.userId };
     }
 
     if (status) where.status = status;
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       // Verify organiser owns this service
       if (role === "organiser") {
         const owned = await prisma.service.findFirst({
-          where: { id: serviceId, organiserId: session.user.id },
+          where: { id: serviceId, organiserId: user.userId },
           select: { id: true },
         });
         if (!owned) {
