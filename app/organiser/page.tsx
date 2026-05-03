@@ -5,6 +5,7 @@ import useSWR from "swr";
 import Link from "next/link";
 import OrganiserLayout from "@/components/organiser/OrganiserLayout";
 import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
+import VoiceAssistant from "@/voice/components/VoiceAssistant";
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   confirmed: { label: "Confirmed", bg: "#E8F5E9", text: "#2E7D32" },
@@ -34,6 +35,7 @@ export default function OrganiserDashboard() {
     dashboardSWRConfig
   );
   const loading = !responseData && !error;
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const data = responseData?.data;
 
   const handleConfirm = async (bookingId: string) => {
@@ -199,6 +201,50 @@ export default function OrganiserDashboard() {
         </div>
       </div>
 
+      {/* Voice FAB — fixed bottom-right, always visible above layout */}
+      <button
+        onClick={() => setVoiceOpen(true)}
+        title="Voice Assistant — create appointments hands-free"
+        style={{
+          position: 'fixed', bottom: 28, right: 28,
+          width: 60, height: 60, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #9B59B6, #724A6A)',
+          border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 6px 24px rgba(114,74,106,0.45), 0 0 0 4px rgba(114,74,106,0.12)',
+          zIndex: 9999,
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)';
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 32px rgba(114,74,106,0.6), 0 0 0 6px rgba(114,74,106,0.18)';
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 24px rgba(114,74,106,0.45), 0 0 0 4px rgba(114,74,106,0.12)';
+        }}
+      >
+        {/* SVG mic icon — reliable cross-platform rendering */}
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10a7 7 0 0 0 14 0" />
+          <line x1="12" y1="19" x2="12" y2="22" />
+          <line x1="9" y1="22" x2="15" y2="22" />
+        </svg>
+      </button>
+
+      {voiceOpen && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setVoiceOpen(false); }}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
+            zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px', overflowY: 'auto',
+          }}
+        >
+          <VoiceAssistant role="organiser" onSuccess={() => { setVoiceOpen(false); mutate(); }} />
+        </div>
+      )}
     </OrganiserLayout>
   );
 }

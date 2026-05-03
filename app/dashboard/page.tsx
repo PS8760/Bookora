@@ -6,6 +6,7 @@ import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { CalendarDays, Clock, CheckCircle2, XCircle, Inbox, Calendar, Video, ExternalLink } from "lucide-react";
 import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
+import VoiceAssistant from "@/voice/components/VoiceAssistant";
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
   confirmed: { label: "Confirmed", bg: "#E8F5E9", text: "#2E7D32" },
@@ -39,6 +40,7 @@ export default function DashboardPage() {
 
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   const handleCancel = async (bookingId: string) => {
     if (!confirm("Cancel this booking?")) return;
@@ -235,6 +237,48 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+      {/* Voice FAB — always visible above layout */}
+      <button
+        onClick={() => setVoiceOpen(true)}
+        title="Voice Assistant — book appointments hands-free"
+        style={{
+          position: 'fixed', bottom: 28, right: 28,
+          width: 60, height: 60, borderRadius: '50%',
+          background: 'linear-gradient(135deg, #9B59B6, #724A6A)',
+          border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 6px 24px rgba(114,74,106,0.45), 0 0 0 4px rgba(114,74,106,0.12)',
+          zIndex: 9999,
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)';
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 8px 32px rgba(114,74,106,0.6), 0 0 0 6px rgba(114,74,106,0.18)';
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+          (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 24px rgba(114,74,106,0.45), 0 0 0 4px rgba(114,74,106,0.12)';
+        }}
+      >
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10a7 7 0 0 0 14 0" />
+          <line x1="12" y1="19" x2="12" y2="22" />
+          <line x1="9" y1="22" x2="15" y2="22" />
+        </svg>
+      </button>
+
+      {voiceOpen && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setVoiceOpen(false); }}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+            zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }}
+        >
+          <VoiceAssistant role="customer" onSuccess={() => { setVoiceOpen(false); mutate(); }} />
+        </div>
+      )}
     </DashboardLayout>
   );
 }

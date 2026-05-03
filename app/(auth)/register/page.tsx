@@ -13,6 +13,14 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [showPass, setShowPass] = useState(false);
 
+  // For social sign-up: store the chosen role in a cookie so /api/auth/redirect
+  // can apply it after the OAuth callback (the OAuth flow can't carry state itself)
+  const handleSocialSignUp = (provider: "google" | "github") => {
+    // Set a short-lived cookie the redirect route will read
+    document.cookie = `pending-role=${form.role}; path=/; max-age=300; SameSite=Lax`;
+    signIn.social({ provider, callbackURL: "/api/auth/redirect" });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -23,23 +31,19 @@ export default function RegisterPage() {
         name: form.fullName,
         email: form.email,
         password: form.password,
-        callbackURL: "/dashboard",
+        // Pass the role as an additional field — better-auth writes it
+        // directly to the user record so the session has the correct role
+        // from the very first request.
+        role: form.role as any,
+        callbackURL: "/api/auth/redirect",
       });
 
       if (signUpError) {
         setError(signUpError.message || "Registration failed. Please try again.");
       } else {
-        // Set the chosen role server-side
-        if (form.role !== "customer") {
-          await fetch("/api/auth/set-role", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ role: form.role }),
-          });
-        }
-        if (form.role === "admin") router.push("/admin");
-        else if (form.role === "organiser") router.push("/organiser");
-        else router.push("/dashboard");
+        // /api/auth/redirect reads the session role from DB and bounces
+        // to /organiser, /dashboard, or /admin automatically.
+        router.replace("/api/auth/redirect");
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -222,7 +226,7 @@ export default function RegisterPage() {
             {/* Google OAuth */}
             <button
               type="button"
-              onClick={() => signIn.social({ provider: "google", callbackURL: "/api/auth/redirect" })}
+              onClick={() => handleSocialSignUp("google")}
               className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-[#E8E0D0] bg-[#FFFBE9] text-sm font-medium text-[#4A4A6A] hover:border-[#724A6A] hover:text-[#724A6A] transition-colors"
             >
               <svg width="18" height="18" viewBox="0 0 24 24">
@@ -237,7 +241,7 @@ export default function RegisterPage() {
             {/* GitHub OAuth */}
             <button
               type="button"
-              onClick={() => signIn.social({ provider: "github", callbackURL: "/api/auth/redirect" })}
+              onClick={() => handleSocialSignUp("github")}
               className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-[#E8E0D0] bg-[#FFFBE9] text-sm font-medium text-[#4A4A6A] hover:border-[#724A6A] hover:text-[#724A6A] transition-colors"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">

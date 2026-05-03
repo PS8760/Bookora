@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { generateSlots } from "@/lib/slots";
 import { sendNotification, NotificationTemplates } from "@/lib/notifications";
+import { getSessionWithRole } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-// GET /api/appointments — list published services (customers) or own services (organiser)
+// GET /api/appointments — list published services (customers) or own services (organiser scope=own)
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
+    const user = await getSessionWithRole(request);
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(50, parseInt(searchParams.get("limit") || "20"));
     const skip = (page - 1) * limit;
 
-    const role = (session?.user as { role?: string })?.role ?? "customer";
+    // role is now always correct from DB
+    const role = user?.role ?? "customer";
 
     // Build where clause based on role
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,14 +29,12 @@ export async function GET(request: NextRequest) {
 
     if (role === "admin") {
       // admins see everything
-    } else if (role === "organiser" && scope === "own") {
-      // Management view: see own services (including drafts)
-      where.organiserId = session!.user.id;
+    } else if ((role === "organiser" || role === "admin") && scope === "own") {
+      // Management view: own services including drafts
+      where.organiserId = user!.userId;
     } else {
-      // Public view: customers and organisers see all published services
+      // Public view: only published services
       where.isPublished = true;
-      // Organisers also want to see their own drafts in the public list? 
-      // Usually no, but they might. For now, let's keep it simple: published only.
     }
 
     if (category && category !== "All") {
@@ -70,14 +69,14 @@ export async function GET(request: NextRequest) {
             },
             select: { id: true, capacity: true, booked: true, startTime: true },
             orderBy: { startTime: "asc" },
-            take: 100, // enough to get a realistic count
+            take: 100,
           },
-          _count: { 
-            select: { 
+          _count: {
+            select: {
               bookings: {
                 where: { status: { in: ["PENDING", "CONFIRMED"] } }
-              } 
-            } 
+              }
+            }
           },
         },
         orderBy,
@@ -87,7 +86,7 @@ export async function GET(request: NextRequest) {
       prisma.service.count({ where }),
     ]);
 
-    // Compute available slots count per service — sum remaining capacity across all future slots
+    // Compute available slots count per service
     let data = services.map((s) => ({
       ...s,
       availableSlots: s.providerSlots.reduce(
@@ -96,9 +95,10 @@ export async function GET(request: NextRequest) {
       ),
     }));
 
-    // If public view, filter out fully booked services
-    if (role === "customer" || (role === "organiser" && scope !== "own")) {
-      data = data.filter((s) => s.availableSlots > 0);
+    // In public view (customer or organiser browsing public), filter fully-booked services
+    // BUT if a service has NO slots yet, still show it (not scheduled yet, not fully booked)
+    if (scope !== "own" && role !== "admin") {
+      data = data.filter((s) => s.providerSlots.length === 0 || s.availableSlots > 0);
     }
 
     return NextResponse.json({
@@ -117,17 +117,17 @@ export async function GET(request: NextRequest) {
 // POST /api/appointments — create a new service (organiser/admin only)
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
+    const user = await getSessionWithRole(request);
 
-    if (!session) {
+    if (!user) {
       return NextResponse.json(
         { error: { code: "UNAUTHORIZED", message: "Authentication required" } },
         { status: 401 }
       );
     }
 
-    const role = (session.user as { role?: string }).role ?? "customer";
-    if (!["organiser", "admin"].includes(role)) {
+    // Role is now read from DB — always correct
+    if (!["organiser", "admin"].includes(user.role)) {
       return NextResponse.json(
         { error: { code: "FORBIDDEN", message: "Only organisers can create services" } },
         { status: 403 }
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     const service = await prisma.service.create({
       data: {
-        organiserId: session.user.id,
+        organiserId: user.userId,
         title,
         description,
         category,
@@ -213,14 +213,14 @@ export async function POST(request: NextRequest) {
 
       // Send notification to organiser
       const organiser = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: user.userId },
         select: { name: true },
       });
 
       if (organiser) {
         const template = NotificationTemplates.SERVICE_CREATED(organiser.name, service.title);
         await sendNotification({
-          userId: session.user.id,
+          userId: user.userId,
           ...template,
         });
       }
