@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/auth-client";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
 import { signOut } from "@/lib/auth-client";
 
@@ -42,9 +41,8 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`skeleton rounded-xl ${className}`} />;
 }
 
-export default function ProfilePage() {
+export default function DashboardProfilePage() {
   const router = useRouter();
-  const { data: session } = useSession();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,13 +62,6 @@ export default function ProfilePage() {
   // Delete account state
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  // Redirect logged-in users to dashboard profile
-  useEffect(() => {
-    if (session?.user) {
-      router.replace("/dashboard/profile");
-    }
-  }, [session, router]);
 
   const loadProfile = useCallback((hydrateForm = false) => {
     fetch("/api/profile")

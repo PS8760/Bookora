@@ -26,11 +26,11 @@ export default function BookoraLogo({
     />
   );
 
-  if (!linked) return <span className={className}>{img}</span>;
+if (!linked) return <span className={`inline-flex items-center ${className}`}>{img}</span>;
 
-  return (
-    <Link href="/" className={`inline-flex items-center ${className}`}>
-      {img}
-    </Link>
-  );
+   return (
+     <Link href="/" className={`inline-flex items-center ${className}`}>
+       {img}
+     </Link>
+   );
 }

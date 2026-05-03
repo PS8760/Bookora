@@ -45,7 +45,7 @@ export default function Navbar() {
       <div className="page-container">
         <div className="flex items-center justify-between h-14 py-1">
           {/* Logo */}
-<Link href="/" className="flex items-center group">
+<Link href="/" className="flex items-center group h-full justify-center">
              <BookoraLogo height={40} linked={false} />
            </Link>
 
@@ -71,20 +71,20 @@ export default function Navbar() {
             {session?.user ? (
               /* Logged-in state */
               <div className="relative">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-[#E8E0D0] bg-white hover:border-[#724A6A] transition-colors"
-                >
-                  <div className="w-7 h-7 rounded-full bg-[#724A6A] flex items-center justify-center text-white text-xs font-bold">
-                    {session.user.name?.charAt(0).toUpperCase() || "U"}
-                  </div>
-                  <span className="text-sm font-medium text-[#1A1A2E] max-w-[120px] truncate">
-                    {session.user.name}
-                  </span>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[#8A8AAA]">
-                    <path d="M6 9l6 6 6-6"/>
-                  </svg>
-                </button>
+<button
+                   onClick={() => setUserMenuOpen(!userMenuOpen)}
+                   className="flex items-center gap-2 px-2 py-1 rounded-lg border border-[#E8E0D0] bg-white hover:border-[#724A6A] transition-colors"
+                 >
+                   <div className="w-6 h-6 rounded-full bg-[#724A6A] flex items-center justify-center text-white text-[10px] font-bold">
+                     {session.user.name?.charAt(0).toUpperCase() || "U"}
+                   </div>
+                   <span className="text-xs font-medium text-[#1A1A2E] max-w-[100px] truncate">
+                     {session.user.name}
+                   </span>
+                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[#8A8AAA]">
+                     <path d="M6 9l6 6 6-6"/>
+                   </svg>
+                 </button>
 
                 {userMenuOpen && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl border border-[#E8E0D0] shadow-[0_8px_32px_rgba(114,74,106,0.15)] py-1 z-50">
