@@ -135,6 +135,15 @@ export async function PATCH(
       assignmentMode,
       maxPerSlot,
       venue,
+      deliveryMode,
+      virtualPlatform,
+      physicalAddress,
+      physicalRoom,
+      mapsLink,
+      virtualPrice,
+      physicalPrice,
+      virtualDuration,
+      physicalDuration,
     } = body;
 
     // Validate enums if provided
@@ -171,6 +180,15 @@ export async function PATCH(
     if (assignmentMode !== undefined) updateData.assignmentMode = assignmentMode as any;
     if (maxPerSlot !== undefined) updateData.maxPerSlot = Number(maxPerSlot);
     if (venue !== undefined) updateData.venue = venue;
+    if (deliveryMode !== undefined) updateData.deliveryMode = deliveryMode;
+    if (virtualPlatform !== undefined) updateData.virtualPlatform = virtualPlatform;
+    if (physicalAddress !== undefined) updateData.physicalAddress = physicalAddress;
+    if (physicalRoom !== undefined) updateData.physicalRoom = physicalRoom;
+    if (mapsLink !== undefined) updateData.mapsLink = mapsLink;
+    if (virtualPrice !== undefined) updateData.virtualPrice = virtualPrice ? Number(virtualPrice) : null;
+    if (physicalPrice !== undefined) updateData.physicalPrice = physicalPrice ? Number(physicalPrice) : null;
+    if (virtualDuration !== undefined) updateData.virtualDuration = virtualDuration ? Number(virtualDuration) : null;
+    if (physicalDuration !== undefined) updateData.physicalDuration = physicalDuration ? Number(physicalDuration) : null;
 
     const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const svc = await tx.service.update({

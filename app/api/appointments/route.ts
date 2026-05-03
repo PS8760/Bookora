@@ -147,9 +147,17 @@ export async function POST(request: NextRequest) {
       currency,
       manualConfirm,
       assignmentMode,
-      maxPerSlot,
       venue,
       isPublished,
+      deliveryMode,
+      virtualPlatform,
+      physicalAddress,
+      physicalRoom,
+      mapsLink,
+      virtualPrice,
+      physicalPrice,
+      virtualDuration,
+      physicalDuration,
     } = body;
 
     if (!title || !durationMinutes) {
@@ -173,9 +181,17 @@ export async function POST(request: NextRequest) {
         currency: currency ?? "INR",
         manualConfirm: manualConfirm ?? false,
         assignmentMode: assignmentMode ?? "AUTOMATIC",
-        maxPerSlot: maxPerSlot ?? 1,
         venue,
         isPublished: isPublished ?? false,
+        deliveryMode: deliveryMode ?? "PHYSICAL",
+        virtualPlatform: virtualPlatform ?? "MEET",
+        physicalAddress,
+        physicalRoom,
+        mapsLink,
+        virtualPrice: virtualPrice ? Number(virtualPrice) : null,
+        physicalPrice: physicalPrice ? Number(physicalPrice) : null,
+        virtualDuration: virtualDuration ? Number(virtualDuration) : null,
+        physicalDuration: physicalDuration ? Number(physicalDuration) : null,
         schedules: {
           create: {
             type: "WEEKLY",

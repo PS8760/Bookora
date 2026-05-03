@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
+    const mode = searchParams.get("mode");
     const serviceId = searchParams.get("serviceId");
     const search = searchParams.get("search");
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) where.status = status;
+    if (mode) where.selectedMode = mode;
 
     if (search) {
       where.OR = [
@@ -87,6 +89,7 @@ export async function GET(request: NextRequest) {
         id: b.id,
         status: b.status,
         paymentStatus: b.paymentStatus,
+        selectedMode: b.selectedMode,
         notes: b.notes,
         createdAt: b.createdAt,
         confirmedAt: b.confirmedAt,
