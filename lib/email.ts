@@ -215,6 +215,9 @@ export interface BookingEmailData {
   bookingId: string;
   amount?: number;
   currency?: string;
+  meetingLink?: string;
+  selectedMode?: string | null;
+  venueSnapshot?: string | null;
 }
 
 /**
@@ -227,7 +230,7 @@ export async function sendBookingConfirmationEmail(
   const content = `
     <h1>🎉 Booking Confirmed!</h1>
     <p>Hi <span class="highlight">${data.customerName}</span>,</p>
-    <p>Great news! Your booking has been confirmed. We're looking forward to seeing you!</p>
+    <p>Great news! Your booking for <strong>${data.serviceTitle}</strong> has been confirmed. We're looking forward to seeing you!</p>
     
     <div class="info-box">
       <h2>Booking Details</h2>
@@ -243,7 +246,22 @@ export async function sendBookingConfirmationEmail(
         <span class="info-label">Duration:</span>
         <span class="info-value">${data.duration}</span>
       </div>
-      ${data.venue ? `
+      <div class="info-row">
+        <span class="info-label">Delivery Mode:</span>
+        <span class="info-value">${data.selectedMode === "VIRTUAL" ? "Virtual Meeting" : data.selectedMode === "PHYSICAL" ? "Physical Visit" : "Standard"}</span>
+      </div>
+      ${data.meetingLink ? `
+      <div class="info-row" style="background-color: #F5EDF4; padding: 10px; margin-top: 10px; border-radius: 8px;">
+        <span class="info-label">Meeting Link:</span>
+        <a href="${data.meetingLink}" style="color: #724A6A; font-weight: bold;">Join Meeting</a>
+      </div>
+      ` : ''}
+      ${data.venueSnapshot ? `
+      <div class="info-row">
+        <span class="info-label">Venue:</span>
+        <span class="info-value">${data.venueSnapshot}</span>
+      </div>
+      ` : data.venue ? `
       <div class="info-row">
         <span class="info-label">Venue:</span>
         <span class="info-value">${data.venue}</span>
@@ -727,6 +745,9 @@ export async function sendWelcomeEmail(
     <p style="text-align: center;">
       <a href="${process.env.NEXT_PUBLIC_SITE_URL}/contact-admin" style="color: #724A6A; text-decoration: none;">Contact Support</a>
     </p>
+  </div>
+</body>
+</html>
   `;
 
   return sendEmail({

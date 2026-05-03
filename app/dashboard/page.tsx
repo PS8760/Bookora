@@ -4,7 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
-import { CalendarDays, Clock, CheckCircle2, XCircle, Inbox, Calendar } from "lucide-react";
+import { CalendarDays, Clock, CheckCircle2, XCircle, Inbox, Calendar, Video, ExternalLink } from "lucide-react";
 import { dashboardSWRConfig, jsonFetcher } from "@/lib/realtime";
 
 const statusConfig: Record<string, { label: string; bg: string; text: string }> = {
@@ -29,7 +29,7 @@ function Skeleton({ className }: { className?: string }) {
 }
 
 export default function DashboardPage() {
-  const { data: responseData, error, mutate } = useSWR(
+  const { data: responseData, error, mutate } = useSWR<{ data: DashData }>(
     "/api/dashboard/customer",
     jsonFetcher,
     dashboardSWRConfig
@@ -125,7 +125,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="divide-y divide-[#F0EAD8]">
-              {bookings.map((b, idx) => {
+              {bookings.map((b: any, idx: number) => {
                 const s = statusConfig[b.status] ?? statusConfig.pending;
                 return (
                   <div key={b.id} className="flex items-center gap-4 p-4 hover:bg-[#FFFBE9] transition-colors">
@@ -156,10 +156,53 @@ export default function DashboardPage() {
                     <div className="text-right hidden sm:block">
                       <p className="text-sm font-medium text-[#4A4A6A]">{b.date}</p>
                       <p className="text-xs text-[#8A8AAA]">{b.time}</p>
+                      <p className="text-xs text-[#8A8AAA] mt-1 flex items-center gap-1 justify-end">
+                        {b.selectedMode === "VIRTUAL" ? "💻 Virtual" : b.selectedMode === "PHYSICAL" ? "📍 Physical" : ""}
+                      </p>
                     </div>
                     <span className="badge text-[11px] flex-shrink-0" style={{ background: s.bg, color: s.text }}>
                       {s.label}
                     </span>
+                    {tab === "upcoming" && b.virtualMeeting && (
+                      <div className="flex flex-col items-end gap-1">
+                        {(() => {
+                          const now = new Date();
+                          const start = new Date(b.virtualMeeting.startTime);
+                          const end = new Date(b.virtualMeeting.endTime);
+                          const buffer = 10 * 60 * 1000; // 10 mins
+                          const isActive = now >= new Date(start.getTime() - buffer) && now <= end;
+                          const isFinished = now > end;
+
+                          if (isFinished) return <span className="text-[10px] text-[#8A8AAA]">Meeting Ended</span>;
+                          
+                          if (isActive) return (
+                            <a 
+                              href={b.virtualMeeting.link} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2E7D32] text-white rounded-lg text-xs font-bold hover:bg-[#1B5E20] transition-all shadow-sm animate-pulse"
+                            >
+                              <Video size={14} />
+                              Join Now
+                            </a>
+                          );
+
+                          return (
+                            <div className="flex items-center gap-1 text-[10px] text-[#E65100] font-medium bg-[#FFF3E0] px-2 py-0.5 rounded-md">
+                              <Video size={10} />
+                              Starts {new Date(start.getTime() - buffer).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    {b.selectedMode === "PHYSICAL" && b.venueSnapshot && (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] text-[#4A4A6A] bg-[#F5EDF4] px-2 py-1 rounded-md border border-[#D4B8CF] line-clamp-1 max-w-[150px]">
+                          📍 {b.venueSnapshot}
+                        </span>
+                      </div>
+                    )}
                     {tab === "upcoming" && b.status !== "cancelled" && (
                       <div className="flex flex-col gap-2">
                         <Link

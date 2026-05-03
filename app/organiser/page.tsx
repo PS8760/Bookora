@@ -28,7 +28,7 @@ interface OrgData {
 }
 
 export default function OrganiserDashboard() {
-  const { data: responseData, error, mutate } = useSWR(
+  const { data: responseData, error, mutate } = useSWR<{ data: any }>(
     "/api/dashboard/organiser",
     jsonFetcher,
     dashboardSWRConfig
@@ -102,7 +102,7 @@ export default function OrganiserDashboard() {
               </div>
             ) : (
               <div className="divide-y divide-[#F0EAD8]">
-                {(data?.services ?? []).slice(0, 5).map((s) => (
+                {(data?.services ?? []).slice(0, 5).map((s: any) => (
                   <div key={s.id} className="flex items-center gap-3 p-4 hover:bg-[#FFFBE9] transition-colors">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 bg-[#F5EDF4] overflow-hidden">
                       {s.icon?.startsWith('/') || s.icon?.startsWith('http') ? (
@@ -138,7 +138,7 @@ export default function OrganiserDashboard() {
               </div>
             ) : (
               <div className="divide-y divide-[#F0EAD8]">
-                {(data?.recentBookings ?? []).map((b) => {
+                {(data?.recentBookings ?? []).map((b: any) => {
                   const s = statusConfig[b.status] ?? statusConfig.pending;
                   return (
                     <div key={b.id} className="flex items-center gap-3 p-4 hover:bg-[#FFFBE9] transition-colors">
@@ -161,6 +161,34 @@ export default function OrganiserDashboard() {
                             </>
                           )}
                         </div>
+                        {b.virtualMeeting && (
+                          <div className="flex flex-col items-end mt-1">
+                            {(() => {
+                              const now = new Date();
+                              const start = new Date(b.virtualMeeting.startTime);
+                              const end = new Date(b.virtualMeeting.endTime);
+                              const buffer = 10 * 60 * 1000;
+                              const isActive = now >= new Date(start.getTime() - buffer) && now <= end;
+                              
+                              if (now > end) return <span className="text-[9px] text-[#8A8AAA]">Finished</span>;
+                              
+                              return (
+                                <a 
+                                  href={b.virtualMeeting.link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                                    isActive 
+                                      ? "bg-[#724A6A] text-white hover:bg-[#5A3A54]" 
+                                      : "bg-[#F5EDF4] text-[#724A6A] border border-[#D4B8CF]"
+                                  }`}
+                                >
+                                  {isActive ? "Start Meeting" : "View Meeting"}
+                                </a>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

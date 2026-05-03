@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
 import { invalidateSlots, generateSlots } from "@/lib/slots";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/appointments/:id — get single service details
+// ... existing GET ...
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -135,6 +137,15 @@ export async function PATCH(
       venue,
       introMessage,
       confirmMessage,
+      deliveryMode,
+      virtualPlatform,
+      physicalAddress,
+      physicalRoom,
+      mapsLink,
+      virtualPrice,
+      physicalPrice,
+      virtualDuration,
+      physicalDuration,
     } = body;
 
     // Validate enums if provided
@@ -157,8 +168,7 @@ export async function PATCH(
       durationMinutes !== undefined &&
       Number(durationMinutes) !== existing.durationMinutes;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const updateData: any = {};
+    const updateData: Prisma.ServiceUpdateInput = {};
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (category !== undefined) updateData.category = category;
@@ -169,13 +179,22 @@ export async function PATCH(
     if (paymentAmount !== undefined) updateData.paymentAmount = paymentAmount ? Number(paymentAmount) : null;
     if (currency !== undefined) updateData.currency = currency;
     if (manualConfirm !== undefined) updateData.manualConfirm = manualConfirm;
-    if (assignmentMode !== undefined) updateData.assignmentMode = assignmentMode;
+    if (assignmentMode !== undefined) updateData.assignmentMode = assignmentMode as any;
     if (maxPerSlot !== undefined) updateData.maxPerSlot = Number(maxPerSlot);
     if (venue !== undefined) updateData.venue = venue;
     if (introMessage !== undefined) updateData.introMessage = introMessage || null;
     if (confirmMessage !== undefined) updateData.confirmMessage = confirmMessage || null;
+    if (deliveryMode !== undefined) updateData.deliveryMode = deliveryMode;
+    if (virtualPlatform !== undefined) updateData.virtualPlatform = virtualPlatform;
+    if (physicalAddress !== undefined) updateData.physicalAddress = physicalAddress;
+    if (physicalRoom !== undefined) updateData.physicalRoom = physicalRoom;
+    if (mapsLink !== undefined) updateData.mapsLink = mapsLink;
+    if (virtualPrice !== undefined) updateData.virtualPrice = virtualPrice ? Number(virtualPrice) : null;
+    if (physicalPrice !== undefined) updateData.physicalPrice = physicalPrice ? Number(physicalPrice) : null;
+    if (virtualDuration !== undefined) updateData.virtualDuration = virtualDuration ? Number(virtualDuration) : null;
+    if (physicalDuration !== undefined) updateData.physicalDuration = physicalDuration ? Number(physicalDuration) : null;
 
-    const updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const svc = await tx.service.update({
         where: { id },
         data: updateData,

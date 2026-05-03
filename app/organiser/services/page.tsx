@@ -36,7 +36,7 @@ interface Service {
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function OrganiserServicesPage() {
-  const { data, error, mutate } = useSWR(
+  const { data, error, mutate } = useSWR<{ data: any }>(
     "/api/appointments?limit=50&scope=own",
     jsonFetcher,
     dashboardSWRConfig

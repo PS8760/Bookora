@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
           customer: { select: { id: true, name: true, email: true, image: true } },
           service: { select: { id: true, title: true, icon: true } },
           providerSlot: { select: { startTime: true, endTime: true } },
+          virtualMeeting: true,
         },
         orderBy: { createdAt: "desc" },
         take: 10,
@@ -124,6 +125,13 @@ export async function GET(request: NextRequest) {
             hour: "2-digit", minute: "2-digit",
           }),
           status: b.status.toLowerCase(),
+          virtualMeeting: b.virtualMeeting ? {
+            link: b.virtualMeeting.meetingLink,
+            platform: b.virtualMeeting.platform,
+            startTime: b.virtualMeeting.startTime,
+            endTime: b.virtualMeeting.endTime,
+            status: b.virtualMeeting.status,
+          } : null,
         })),
         user: {
           name: session.user.name,

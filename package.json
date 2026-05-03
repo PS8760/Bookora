@@ -2,11 +2,12 @@
   "name": "appoints",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
+"scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@better-auth/prisma-adapter": "^1.6.9",
@@ -15,14 +16,17 @@
     "@prisma/client-runtime-utils": "^7.8.0",
     "@stripe/react-stripe-js": "^6.3.0",
     "@stripe/stripe-js": "^9.4.0",
+    "@types/nodemailer": "^8.0.0",
     "bcrypt": "^6.0.0",
     "better-auth": "^1.6.9",
     "clsx": "^2.1.1",
+    "googleapis": "^171.4.0",
     "groq-sdk": "^1.1.2",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.14.0",
     "next": "16.2.4",
     "nodemailer": "^8.0.7",
+    "pg": "^8.20.0",
     "prisma": "5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -33,8 +37,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.4.2",

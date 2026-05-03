@@ -62,7 +62,7 @@ export const reportSWRConfig = {
  * Standard JSON fetcher for SWR.
  * Throws on non-2xx responses so SWR can handle error state.
  */
-export async function jsonFetcher<T = unknown>(url: string): Promise<T> {
+export async function jsonFetcher<T = any>(url: string): Promise<T> {
   const response = await fetch(url, { cache: "no-store" });
   const payload  = await response.json();
 
@@ -89,7 +89,7 @@ export async function jsonFetcher<T = unknown>(url: string): Promise<T> {
  */
 const etagStore = new Map<string, { etag: string; data: unknown }>();
 
-export async function etagFetcher<T = unknown>(url: string): Promise<T> {
+export async function etagFetcher<T = any>(url: string): Promise<T> {
   const cached = etagStore.get(url);
 
   const headers: HeadersInit = { "Cache-Control": "no-cache" };

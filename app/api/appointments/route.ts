@@ -147,9 +147,17 @@ export async function POST(request: NextRequest) {
       currency,
       manualConfirm,
       assignmentMode,
-      maxPerSlot,
       venue,
       isPublished,
+      deliveryMode,
+      virtualPlatform,
+      physicalAddress,
+      physicalRoom,
+      mapsLink,
+      virtualPrice,
+      physicalPrice,
+      virtualDuration,
+      physicalDuration,
     } = body;
 
     if (!title || !durationMinutes) {
@@ -173,34 +181,34 @@ export async function POST(request: NextRequest) {
         currency: currency ?? "INR",
         manualConfirm: manualConfirm ?? false,
         assignmentMode: assignmentMode ?? "AUTOMATIC",
-        maxPerSlot: maxPerSlot ?? 1,
         venue,
         isPublished: isPublished ?? false,
-      },
-    });
-
-    // Create a default weekly schedule (Mon-Fri, 9 AM - 5 PM)
-    // This ensures services have slots available immediately
-    try {
-      const schedule = await prisma.schedule.create({
-        data: {
-          serviceId: service.id,
-          type: "WEEKLY",
-          weeklyRules: {
-            createMany: {
-              data: [
-                { dayOfWeek: 1, startMinute: 540, endMinute: 1020 }, // Monday 9:00-17:00
-                { dayOfWeek: 2, startMinute: 540, endMinute: 1020 }, // Tuesday
-                { dayOfWeek: 3, startMinute: 540, endMinute: 1020 }, // Wednesday
-                { dayOfWeek: 4, startMinute: 540, endMinute: 1020 }, // Thursday
-                { dayOfWeek: 5, startMinute: 540, endMinute: 1020 }, // Friday
-              ],
+        deliveryMode: deliveryMode ?? "PHYSICAL",
+        virtualPlatform: virtualPlatform ?? "MEET",
+        physicalAddress,
+        physicalRoom,
+        mapsLink,
+        virtualPrice: virtualPrice ? Number(virtualPrice) : null,
+        physicalPrice: physicalPrice ? Number(physicalPrice) : null,
+        virtualDuration: virtualDuration ? Number(virtualDuration) : null,
+        physicalDuration: physicalDuration ? Number(physicalDuration) : null,
+        schedules: {
+          create: {
+            type: "WEEKLY",
+            weeklyRules: {
+              create: [1, 2, 3, 4, 5].map((day) => ({
+                dayOfWeek: day,
+                startMinute: 9 * 60,
+                endMinute: 18 * 60,
+              })),
             },
           },
         },
-      });
+      },
+    });
 
-      // Generate slots for the next 60 days
+    // Generate slots for the next 60 days
+    try {
       await generateSlots(service.id);
 
       // Send notification to organiser
@@ -216,9 +224,8 @@ export async function POST(request: NextRequest) {
           ...template,
         });
       }
-    } catch (scheduleError) {
-      console.error("Failed to create default schedule:", scheduleError);
-      // Service is still created, organiser can configure schedule manually
+    } catch (genError) {
+      console.error("Failed to generate initial slots or send notification:", genError);
     }
 
     return NextResponse.json({ data: service }, { status: 201 });

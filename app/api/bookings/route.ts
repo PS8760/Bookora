@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { Prisma, BookingStatus, PaymentStatus } from "@prisma/client";
 import { invalidateSlotCache } from "@/lib/slot-cache";
 import { stripe } from "@/lib/stripe";
-import { notifyBookingConfirmed, notifyBookingPending, notifyOrganiserNewBooking } from "@/lib/notification-triggers";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +44,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const page   = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
-    const limit  = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);
-    const skip   = (page - 1) * limit;
+    const page = Math.max(parseInt(searchParams.get("page") || "1", 10), 1);
+    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);
+    const skip = (page - 1) * limit;
 
-    const where = {
-      ...(status ? { status: status.toUpperCase() as any } : {}),
+    const where: Prisma.BookingWhereInput = {
+      ...(status ? { status: status.toUpperCase() as BookingStatus } : {}),
       ...(role === "organiser" ? { service: { organiserId: user.id } } : {}),
     };
 
@@ -60,10 +60,10 @@ export async function GET(request: NextRequest) {
           service: { include: { organiser: { select: { id: true, name: true, email: true } } } },
           providerSlot: true,
           customer: { select: { id: true, name: true, email: true, image: true } },
-          provider:  { select: { id: true, name: true, email: true, image: true } },
-          resource:  true,
-          payments:  { orderBy: { createdAt: "desc" }, take: 1 },
-          answers:   { include: { question: true } },
+          provider: { select: { id: true, name: true, email: true, image: true } },
+          resource: true,
+          payments: { orderBy: { createdAt: "desc" }, take: 1 },
+          answers: { include: { question: true } },
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -115,13 +115,13 @@ export async function POST(request: NextRequest) {
     const user = session.user as SessionUser;
 
     const body = await request.json();
-    const slotId            = String(body.slotId ?? "");
-    const serviceId         = String(body.appointmentId ?? body.serviceId ?? "");
+    const slotId = String(body.slotId ?? "");
+    const serviceId = String(body.appointmentId ?? body.serviceId ?? "");
     const capacityRequested = Math.max(Number(body.capacityRequested ?? 1), 1);
-    const idempotencyKey    = String(body.idempotencyKey ?? randomUUID());
-    const slotVersion       = body.slotVersion != null ? Number(body.slotVersion) : undefined;
-    const formAnswers       = body.formAnswers ?? {};
-    const questionAnswers   = Array.isArray(body.questionAnswers) ? body.questionAnswers : [];
+    const idempotencyKey = String(body.idempotencyKey ?? randomUUID());
+    const slotVersion = body.slotVersion != null ? Number(body.slotVersion) : undefined;
+    const formAnswers = body.formAnswers ?? {};
+    const questionAnswers = Array.isArray(body.questionAnswers) ? body.questionAnswers : [];
 
     if (!slotId || !serviceId) {
       return NextResponse.json(
@@ -133,9 +133,9 @@ export async function POST(request: NextRequest) {
     // ── Idempotency: return existing active booking for this slot ──────────────
     const existingBooking = await prisma.booking.findFirst({
       where: {
-        customerId:    user.id,
+        customerId: user.id,
         providerSlotId: slotId,
-        status:        { in: [...ACTIVE_STATUSES] },
+        status: { in: [...ACTIVE_STATUSES] },
       },
       include: { providerSlot: true, service: true, payments: true },
     });
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Atomic transaction ─────────────────────────────────────────────────────
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Fetch slot + service in one query
       const slot = await tx.providerSlot.findFirst({
         where: { id: slotId, serviceId, isActive: true },
@@ -159,13 +159,13 @@ export async function POST(request: NextRequest) {
               questions: { include: { options: true }, orderBy: { order: "asc" } },
             },
           },
-          user:     { select: { id: true, name: true, email: true } },
+          user: { select: { id: true, name: true, email: true } },
           resource: true,
         },
       });
 
-      if (!slot)                        throw new Error("SLOT_NOT_FOUND");
-      if (!slot.service.isPublished)    throw new Error("APPOINTMENT_NOT_PUBLISHED");
+      if (!slot) throw new Error("SLOT_NOT_FOUND");
+      if (!slot.service.isPublished) throw new Error("APPOINTMENT_NOT_PUBLISHED");
       if (slot.startTime <= new Date()) throw new Error("SLOT_PAST");
 
       const available = slot.capacity - slot.booked;
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
           throw new Error("REQUIRED_QUESTIONS_MISSING");
         }
         if (answer?.selectedOptionId) {
-          const valid = question.options.some((o) => o.id === answer.selectedOptionId);
+          const valid = question.options.some((o: { id: string }) => o.id === answer.selectedOptionId);
           if (!valid) throw new Error("INVALID_QUESTION_OPTION");
         }
       }
@@ -191,13 +191,13 @@ export async function POST(request: NextRequest) {
       // ── Optimistic lock: atomic capacity decrement ─────────────────────────
       const capacityUpdate = await tx.providerSlot.updateMany({
         where: {
-          id:      slotId,
+          id: slotId,
           isActive: true,
-          booked:  { lte: slot.capacity - capacityRequested },
+          booked: { lte: slot.capacity - capacityRequested },
           ...(slotVersion !== undefined ? { version: slotVersion } : {}),
         },
         data: {
-          booked:  { increment: capacityRequested },
+          booked: { increment: capacityRequested },
           version: { increment: 1 },
         },
       });
@@ -205,45 +205,47 @@ export async function POST(request: NextRequest) {
       if (capacityUpdate.count !== 1) throw new Error("CAPACITY_EXCEEDED");
 
       // ── Determine booking status ───────────────────────────────────────────
-      const status        = slot.service.manualConfirm ? "PENDING" : "CONFIRMED";
+      const status = slot.service.manualConfirm ? "PENDING" : "CONFIRMED";
       const paymentStatus = slot.service.advancePayment ? "PENDING" : "UNPAID";
 
       // ── Create booking with all related records ────────────────────────────
       const booking = await tx.booking.create({
         data: {
-          customerId:    user.id,
+          customerId: user.id,
           serviceId,
           providerSlotId: slotId,
-          userId:        slot.userId,
-          resourceId:    slot.resourceId,
+          userId: slot.userId,
+          resourceId: slot.resourceId,
           status,
           paymentStatus,
-          confirmedAt:   status === "CONFIRMED" ? new Date() : null,
+          confirmedAt: status === "CONFIRMED" ? new Date() : null,
+          selectedMode: formAnswers.selectedMode || (slot.service.deliveryMode === "HYBRID" ? "PHYSICAL" : slot.service.deliveryMode),
+          venueSnapshot: slot.service.physicalAddress || slot.service.venue,
           notes: JSON.stringify({
-            phone:             formAnswers.phone ?? null,
-            notes:             formAnswers.notes ?? null,
+            phone: formAnswers.phone ?? null,
+            notes: formAnswers.notes ?? null,
             capacityRequested,
           }),
           payments: slot.service.advancePayment && slot.service.paymentAmount
             ? {
-                create: {
-                  amount:          slot.service.paymentAmount,
-                  currency:        slot.service.currency,
-                  status:          "PENDING",
-                  gatewayProvider: "stripe",
-                  idempotencyKey,
-                },
-              }
+              create: {
+                amount: slot.service.paymentAmount,
+                currency: slot.service.currency,
+                status: "PENDING",
+                gatewayProvider: "stripe",
+                idempotencyKey,
+              },
+            }
             : undefined,
           auditLogs: {
             create: {
-              actorId:  user.id,
-              action:   "CREATED",
+              actorId: user.id,
+              action: "CREATED",
               metadata: {
                 idempotencyKey,
                 capacityRequested,
                 customerSnapshot: {
-                  name:  formAnswers.name  ?? user.name  ?? null,
+                  name: formAnswers.name ?? user.name ?? null,
                   email: formAnswers.email ?? user.email ?? null,
                 },
               },
@@ -267,38 +269,76 @@ export async function POST(request: NextRequest) {
           notifications: {
             create: [
               {
-                userId:  user.id,
+                userId: user.id,
                 channel: "EMAIL",
                 subject: status === "CONFIRMED" ? "Booking confirmed" : "Booking request received",
-                body:    `Your booking for ${slot.service.title} is ${
-                  status === "CONFIRMED" ? "confirmed" : "pending confirmation"
-                }.`,
+                body: `Your booking for ${slot.service.title} is ${status === "CONFIRMED" ? "confirmed" : "pending confirmation"
+                  }.`,
               },
               {
-                userId:  slot.service.organiserId,
+                userId: slot.service.organiserId,
                 channel: "EMAIL",
                 subject: "New booking",
-                body:    `${formAnswers.name ?? user.name ?? "A customer"} booked ${slot.service.title}.`,
+                body: `${formAnswers.name ?? user.name ?? "A customer"} booked ${slot.service.title}.`,
               },
             ],
           },
           answers: questionAnswers.length > 0
             ? {
-                create: questionAnswers
-                  .filter((a: any) => a.questionId)
-                  .map((a: any) => ({
-                    questionId:       a.questionId,
-                    answerText:       a.answerText       ?? null,
-                    selectedOptionId: a.selectedOptionId ?? null,
-                  })),
-              }
+              create: questionAnswers
+                .filter((a: { questionId?: string }) => a.questionId)
+                .map((a: { questionId?: string; answerText?: string; selectedOptionId?: string }) => ({
+                  questionId: a.questionId,
+                  answerText: a.answerText ?? null,
+                  selectedOptionId: a.selectedOptionId ?? null,
+                })),
+            }
             : undefined,
         },
         include: {
           payments: true,
           service: true,
+          virtualMeeting: true,
         },
       });
+
+      // ── Create Virtual Meeting if enabled ───────────────────────────────
+      const isVirtual = slot.service.deliveryMode === "VIRTUAL" || (slot.service.deliveryMode === "HYBRID" && formAnswers.selectedMode === "VIRTUAL");
+      if (slot.service.type === "USER_BASED" && isVirtual) {
+        try {
+          const meeting = await createVirtualMeeting({
+            platform: (slot.service.virtualPlatform as any) || "MEET",
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+            title: slot.service.title,
+            bookingId: booking.id
+          });
+
+          await tx.virtualMeeting.create({
+            data: {
+              bookingId: booking.id,
+              platform: meeting.platform,
+              meetingLink: meeting.meetingLink,
+              meetingId: meeting.meetingId,
+              password: meeting.password,
+              status: meeting.status,
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+            }
+          });
+
+          // Re-fetch booking with virtual meeting
+          return {
+            booking: await tx.booking.findUnique({
+              where: { id: booking.id },
+              include: { payments: true, service: true, virtualMeeting: true }
+            }),
+            slotStartTime: slot.startTime
+          };
+        } catch (vError) {
+          console.error("Virtual meeting creation failed, but booking preserved:", vError);
+        }
+      }
 
       return { booking, slotStartTime: slot.startTime };
     }, {
@@ -308,16 +348,20 @@ export async function POST(request: NextRequest) {
     // ── Stripe Payment Intent Creation ─────────────────────────────────────────
     let clientSecret: string | null = null;
     const booking = result.booking;
-    const payment = (booking as any).payments?.[0];
+    const payment = booking.payments?.[0];
 
-    if (payment && (booking as any).service?.advancePayment && (booking as any).service?.paymentAmount) {
+    if (payment && booking.service?.advancePayment && booking.service?.paymentAmount) {
       try {
         // Convert amount (Decimal) to paise (Integer) for Stripe
-        const amountInPaise = Math.round(Number((booking as any).service.paymentAmount) * 100);
-        
+        const amountInPaise = Math.round(Number(booking.service.paymentAmount) * 100);
+
+        if (!stripe) {
+          throw new Error("STRIPE_NOT_CONFIGURED");
+        }
+
         const intent = await stripe.paymentIntents.create({
           amount: amountInPaise,
-          currency: (booking as any).service.currency.toLowerCase(),
+          currency: booking.service.currency.toLowerCase(),
           metadata: {
             bookingId: booking.id,
             paymentId: payment.id,
@@ -345,30 +389,12 @@ export async function POST(request: NextRequest) {
     const slotDate = result.slotStartTime.toISOString().slice(0, 10);
     invalidateSlotCache(serviceId, slotDate);
 
-    // ── Fire PUSH notifications (non-fatal, runs after response) ─────────────
-    const bookingId = result.booking.id;
-    const bookingStatus = result.booking.status;
-    // Notify organiser of new booking
-    notifyOrganiserNewBooking(bookingId).catch((e) =>
-      console.error("notifyOrganiserNewBooking failed:", e)
-    );
-    // Notify customer
-    if (bookingStatus === "CONFIRMED") {
-      notifyBookingConfirmed(bookingId).catch((e) =>
-        console.error("notifyBookingConfirmed failed:", e)
-      );
-    } else {
-      notifyBookingPending(bookingId).catch((e) =>
-        console.error("notifyBookingPending failed:", e)
-      );
-    }
-
-    return NextResponse.json({ 
+    return NextResponse.json({
       data: result.booking,
       clientSecret,
       payment: clientSecret ? {
-        amount: Number((booking as any).service.paymentAmount),
-        currency: (booking as any).service.currency
+        amount: Number(booking.service.paymentAmount),
+        currency: booking.service.currency
       } : null
     }, { status: 201 });
   } catch (error) {
@@ -376,27 +402,27 @@ export async function POST(request: NextRequest) {
     console.error("POST /api/bookings error:", error);
 
     const httpStatus: Record<string, number> = {
-      SLOT_NOT_FOUND:              404,
-      APPOINTMENT_NOT_PUBLISHED:   403,
-      SLOT_PAST:                   409,
-      CAPACITY_EXCEEDED:           409,
-      REQUIRED_QUESTIONS_MISSING:  400,
-      INVALID_QUESTION_OPTION:     400,
+      SLOT_NOT_FOUND: 404,
+      APPOINTMENT_NOT_PUBLISHED: 403,
+      SLOT_PAST: 409,
+      CAPACITY_EXCEEDED: 409,
+      REQUIRED_QUESTIONS_MISSING: 400,
+      INVALID_QUESTION_OPTION: 400,
     };
 
     const humanMessage: Record<string, string> = {
-      SLOT_NOT_FOUND:              "Slot not found or no longer available",
-      APPOINTMENT_NOT_PUBLISHED:   "This appointment is not available for booking",
-      SLOT_PAST:                   "Cannot book a slot in the past",
-      CAPACITY_EXCEEDED:           "This slot is fully booked — please choose another time",
-      REQUIRED_QUESTIONS_MISSING:  "Please answer all required questions",
-      INVALID_QUESTION_OPTION:     "Invalid answer selected",
+      SLOT_NOT_FOUND: "Slot not found or no longer available",
+      APPOINTMENT_NOT_PUBLISHED: "This appointment is not available for booking",
+      SLOT_PAST: "Cannot book a slot in the past",
+      CAPACITY_EXCEEDED: "This slot is fully booked — please choose another time",
+      REQUIRED_QUESTIONS_MISSING: "Please answer all required questions",
+      INVALID_QUESTION_OPTION: "Invalid answer selected",
     };
 
     return NextResponse.json(
       {
         error: {
-          code:    httpStatus[code] ? code : "INTERNAL_ERROR",
+          code: httpStatus[code] ? code : "INTERNAL_ERROR",
           message: humanMessage[code] ?? (error instanceof Error ? error.message : "Failed to create booking"),
         },
       },

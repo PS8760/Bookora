@@ -2,7 +2,7 @@
 
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  previewFeatures = ["postgresqlExtensions", "driverAdapters"]
 }
 
 datasource db {
@@ -80,6 +80,12 @@ enum AuditAction {
   RESCHEDULED
   PAYMENT_RECEIVED
   PAYMENT_REFUNDED
+}
+
+enum DeliveryMode {
+  VIRTUAL
+  PHYSICAL
+  HYBRID
 }
 
 // ─────────────────────────────────────────
@@ -227,6 +233,17 @@ model Service {
   venue           String?
   introMessage    String?         // Shown on booking intro page (Misc tab)
   confirmMessage  String?         // Shown on booking confirmation page (Misc tab)
+  
+  // Service Delivery Mode
+  deliveryMode    DeliveryMode    @default(PHYSICAL)
+  virtualPlatform String?         @default("MEET") // "MEET", "ZOOM", "TEAMS", "CUSTOM"
+  physicalAddress String?
+  physicalRoom    String?
+  mapsLink        String?
+  virtualPrice    Decimal?        @db.Decimal(10, 2)
+  physicalPrice   Decimal?        @db.Decimal(10, 2)
+  virtualDuration Int?
+  physicalDuration Int?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?
@@ -335,6 +352,11 @@ model Booking {
   cancelledAt    DateTime?
   completedAt    DateTime?
   notes          String?
+  
+  // Delivery Mode selections
+  selectedMode   String?       // "VIRTUAL" or "PHYSICAL"
+  venueSnapshot  String?       // snapshot of the address for physical
+  
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -347,8 +369,9 @@ model Booking {
   payments      Payment[]
   reschedules   RescheduleLog[]
   auditLogs     AuditLog[]
-  notifications Notification[]
-  conversations Conversation[]
+  notifications   Notification[]
+  conversations   Conversation[]
+  virtualMeeting  VirtualMeeting?
 
   @@unique([providerSlotId, customerId])
   @@index([customerId, status])
@@ -540,5 +563,23 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@map("messages")
+}
+
+model VirtualMeeting {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId   String   @unique @db.Uuid
+  platform    String   @default("MEET") // "MEET" or "ZOOM"
+  meetingLink String
+  meetingId   String?  // Platform's meeting ID
+  password    String?  // For Zoom
+  status      String   @default("SCHEDULED") // SCHEDULED, LIVE, COMPLETED, CANCELLED
+  startTime   DateTime
+  endTime     DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("virtual_meetings")
 }
 

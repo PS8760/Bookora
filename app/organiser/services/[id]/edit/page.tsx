@@ -16,6 +16,36 @@ interface Question {
   options: { id: string; label: string; order: number }[];
 }
 
+interface Service {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  icon: string | null;
+  durationMinutes: number;
+  type: "USER_BASED" | "RESOURCE_BASED";
+  isPublished: boolean;
+  advancePayment: boolean;
+  paymentAmount: string | null;
+  currency: string;
+  manualConfirm: boolean;
+  assignmentMode: "AUTOMATIC" | "MANUAL";
+  maxPerSlot: number;
+  venue: string | null;
+  deliveryMode: "VIRTUAL" | "PHYSICAL" | "HYBRID";
+  virtualPlatform: string | null;
+  physicalAddress: string | null;
+  physicalRoom: string | null;
+  mapsLink: string | null;
+  virtualPrice: string | null;
+  physicalPrice: string | null;
+  virtualDuration: number | null;
+  physicalDuration: number | null;
+  introMessage: string | null;
+  confirmMessage: string | null;
+  questions: Question[];
+}
+
 const QUESTION_TYPES = [
   { value: "TEXT",            label: "Single line text" },
   { value: "MULTIPLE_CHOICE", label: "Multiple choice" },
@@ -46,6 +76,15 @@ export default function EditServicePage() {
     isPublished: false,
     introMessage: "",
     confirmMessage: "",
+    deliveryMode: "PHYSICAL",
+    virtualPlatform: "MEET",
+    physicalAddress: "",
+    physicalRoom: "",
+    mapsLink: "",
+    virtualPrice: "",
+    physicalPrice: "",
+    virtualDuration: "",
+    physicalDuration: "",
   });
 
   // ── Questions state ────────────────────────────────────────────────────────
@@ -66,20 +105,33 @@ export default function EditServicePage() {
       .then((r) => r.json())
       .then((j) => {
         if (!j?.data) { setError(j?.error?.message ?? "Failed to load"); return; }
-        const s = j.data;
+        const s = j.data as Service;
         setForm({
-          title: s.title ?? "", description: s.description ?? "",
-          category: s.category ?? "", icon: s.icon ?? "",
+          title: s.title ?? "",
+          description: s.description ?? "",
+          category: s.category ?? "",
+          icon: s.icon ?? "",
           durationMinutes: String(s.durationMinutes ?? 30),
-          venue: s.venue ?? "", type: s.type ?? "USER_BASED",
-          assignmentMode: s.assignmentMode ?? "AUTOMATIC",
-          manualConfirm: Boolean(s.manualConfirm),
+          type: s.type ?? "USER_BASED",
           advancePayment: Boolean(s.advancePayment),
-          paymentAmount: s.paymentAmount ?? "", currency: s.currency ?? "INR",
+          paymentAmount: s.paymentAmount ? String(s.paymentAmount) : "",
+          currency: s.currency ?? "INR",
+          manualConfirm: Boolean(s.manualConfirm),
+          assignmentMode: s.assignmentMode ?? "AUTOMATIC",
           maxPerSlot: String(s.maxPerSlot ?? 1),
+          venue: s.venue ?? "",
           isPublished: Boolean(s.isPublished),
           introMessage: s.introMessage ?? "",
           confirmMessage: s.confirmMessage ?? "",
+          deliveryMode: s.deliveryMode ?? "PHYSICAL",
+          virtualPlatform: s.virtualPlatform ?? "MEET",
+          physicalAddress: s.physicalAddress ?? "",
+          physicalRoom: s.physicalRoom ?? "",
+          mapsLink: s.mapsLink ?? "",
+          virtualPrice: s.virtualPrice ? String(s.virtualPrice) : "",
+          physicalPrice: s.physicalPrice ? String(s.physicalPrice) : "",
+          virtualDuration: s.virtualDuration ? String(s.virtualDuration) : "",
+          physicalDuration: s.physicalDuration ? String(s.physicalDuration) : "",
         });
         setQuestions(s.questions ?? []);
       })
@@ -109,6 +161,15 @@ export default function EditServicePage() {
           maxPerSlot: Number(form.maxPerSlot || "1"),
           introMessage: form.introMessage.trim() || null,
           confirmMessage: form.confirmMessage.trim() || null,
+          deliveryMode: form.deliveryMode,
+          virtualPlatform: form.virtualPlatform,
+          physicalAddress: form.physicalAddress.trim() || null,
+          physicalRoom: form.physicalRoom.trim() || null,
+          mapsLink: form.mapsLink.trim() || null,
+          virtualPrice: form.virtualPrice ? Number(form.virtualPrice) : null,
+          physicalPrice: form.physicalPrice ? Number(form.physicalPrice) : null,
+          virtualDuration: form.virtualDuration ? Number(form.virtualDuration) : null,
+          physicalDuration: form.physicalDuration ? Number(form.physicalDuration) : null,
         }),
       });
       const j = await res.json().catch(() => null);
@@ -456,6 +517,81 @@ export default function EditServicePage() {
               {activeTab === "options" && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-6">
+                    {/* Delivery Mode Selection */}
+                    {form.type === "USER_BASED" && (
+                      <div className="flex flex-col gap-4 p-4 bg-[#F5EDF4] rounded-xl border border-[#D4B8CF]">
+                        <div>
+                          <p className="text-sm font-semibold text-[#724A6A] mb-2">Service Delivery Mode</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {[
+                              { value: "VIRTUAL", label: "Virtual Only", icon: "💻" },
+                              { value: "PHYSICAL", label: "Physical Only", icon: "📍" },
+                              { value: "HYBRID", label: "Hybrid", icon: "🔄" },
+                            ].map((m) => (
+                              <button
+                                key={m.value}
+                                type="button"
+                                onClick={() => setForm({ ...form, deliveryMode: m.value as any })}
+                                className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all ${
+                                  form.deliveryMode === m.value
+                                    ? "border-[#724A6A] bg-white text-[#724A6A]"
+                                    : "border-transparent bg-[#FFFBE9] text-[#4A4A6A] hover:border-[#D4B8CF]"
+                                }`}
+                              >
+                                <span className="text-xl mb-1">{m.icon}</span>
+                                <span className="text-xs font-bold">{m.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {(form.deliveryMode === "VIRTUAL" || form.deliveryMode === "HYBRID") && (
+                          <div className="flex flex-col gap-2 p-3 bg-white rounded-lg border border-[#D4B8CF]">
+                            <p className="text-xs font-bold text-[#724A6A]">Virtual Settings</p>
+                            <div className="flex gap-2">
+                              {["MEET", "ZOOM", "TEAMS", "CUSTOM"].map((p) => (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  onClick={() => setForm({ ...form, virtualPlatform: p })}
+                                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                                    form.virtualPlatform === p
+                                      ? "bg-[#724A6A] text-white border-[#724A6A]"
+                                      : "bg-white text-[#724A6A] border-[#D4B8CF] hover:border-[#724A6A]"
+                                  }`}
+                                >
+                                  {p === "MEET" ? "Google Meet" : p === "ZOOM" ? "Zoom" : p === "TEAMS" ? "MS Teams" : "Custom Link"}
+                                </button>
+                              ))}
+                            </div>
+                            {form.deliveryMode === "HYBRID" && (
+                              <div className="flex gap-2 mt-2">
+                                <input type="number" className="input-base text-xs flex-1" placeholder="Virtual Price (optional)" value={form.virtualPrice} onChange={(e) => setForm({ ...form, virtualPrice: e.target.value })} />
+                                <input type="number" className="input-base text-xs flex-1" placeholder="Virtual Duration (mins, opt)" value={form.virtualDuration} onChange={(e) => setForm({ ...form, virtualDuration: e.target.value })} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {(form.deliveryMode === "PHYSICAL" || form.deliveryMode === "HYBRID") && (
+                          <div className="flex flex-col gap-2 p-3 bg-white rounded-lg border border-[#D4B8CF]">
+                            <p className="text-xs font-bold text-[#724A6A]">Physical Venue Settings</p>
+                            <input type="text" className="input-base text-sm" placeholder="Full Address" value={form.physicalAddress} onChange={(e) => setForm({ ...form, physicalAddress: e.target.value })} />
+                            <div className="flex gap-2">
+                              <input type="text" className="input-base text-sm flex-1" placeholder="Room / Cabin" value={form.physicalRoom} onChange={(e) => setForm({ ...form, physicalRoom: e.target.value })} />
+                              <input type="text" className="input-base text-sm flex-1" placeholder="Maps Link (optional)" value={form.mapsLink} onChange={(e) => setForm({ ...form, mapsLink: e.target.value })} />
+                            </div>
+                            {form.deliveryMode === "HYBRID" && (
+                              <div className="flex gap-2 mt-1">
+                                <input type="number" className="input-base text-xs flex-1" placeholder="Physical Price (optional)" value={form.physicalPrice} onChange={(e) => setForm({ ...form, physicalPrice: e.target.value })} />
+                                <input type="number" className="input-base text-xs flex-1" placeholder="Physical Duration (mins, opt)" value={form.physicalDuration} onChange={(e) => setForm({ ...form, physicalDuration: e.target.value })} />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div>
                       <label className="flex items-center gap-3 text-sm font-semibold text-[#1A1A2E] cursor-pointer mb-2">
                         <input type="checkbox" className="accent-[#724A6A] w-4 h-4" checked={form.manualConfirm} onChange={check("manualConfirm")} />
@@ -517,6 +653,7 @@ export default function EditServicePage() {
               {/* ── MISC TAB ── */}
               {activeTab === "misc" && (
                 <div className="flex flex-col gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-[#1A1A2E] mb-1.5">Introduction Page Message</label>
                     <p className="text-xs text-[#8A8AAA] mb-2">Shown to customers before they pick a slot.</p>
@@ -530,7 +667,8 @@ export default function EditServicePage() {
                       placeholder="Thank you for your trust, we look forward to meeting you." />
                   </div>
                 </div>
-              )}
+              </div>
+            )}
             </div>
 
             {/* ── Save bar ── */}

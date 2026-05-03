@@ -44,6 +44,9 @@ next-env.d.ts
 prisma/generated/
 prisma/generated/**
 
+# seed file (contains credentials)
+prisma/seed.ts
+
 # backups
 *.backup
 .kiro

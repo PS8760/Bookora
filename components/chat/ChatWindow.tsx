@@ -35,7 +35,7 @@ export default function ChatWindow({ chatId: initialChatId, bookingId, receiverI
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data: messagesData, mutate } = useSWR(
+  const { data: messagesData, mutate } = useSWR<{ data: any }>(
     chatId ? `/api/chat/${chatId}` : null,
     jsonFetcher,
     { ...slotSWRConfig, refreshInterval: 3000 } // Poll every 3s for "real-time"

@@ -44,11 +44,11 @@ export default function Navbar() {
       }`}
     >
       <div className="page-container">
-        <div className="flex items-center justify-between h-18 py-2">
+        <div className="flex items-center justify-between h-14 py-1">
           {/* Logo */}
-          <Link href="/" className="flex items-center group">
-            <BookoraLogo height={56} linked={false} />
-          </Link>
+<Link href="/" className="flex items-center group h-full justify-center">
+             <BookoraLogo height={40} linked={false} />
+           </Link>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
@@ -56,7 +56,7 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                   pathname === link.href
                     ? "bg-[#724A6A]/10 text-[#724A6A]"
                     : "text-[#4A4A6A] hover:bg-[#724A6A]/8 hover:text-[#724A6A]"
@@ -122,10 +122,10 @@ export default function Navbar() {
             ) : (
               /* Logged-out state */
               <>
-                <Link href="/book" className="btn-outline text-sm py-2 px-5">
-                  Book Now
-                </Link>
-                <Link href="/register" className="btn-primary text-sm py-2 px-5">
+<Link href="/book" className="btn-outline text-sm py-1.5 px-4">
+                   Book Now
+                 </Link>
+                 <Link href="/register" className="btn-primary text-sm py-1.5 px-4">
                   SignUp
                 </Link>
               </>
@@ -153,13 +153,13 @@ export default function Navbar() {
           menuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="bg-[#FFFBE9]/98 backdrop-blur-md border-t border-[#E8E0D0] px-6 py-4 flex flex-col gap-2">
+        <div className="bg-[#FFFBE9]/98 backdrop-blur-md border-t border-[#E8E0D0] px-6 py-3 flex flex-col gap-2">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setMenuOpen(false)}
-              className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 pathname === link.href
                   ? "bg-[#724A6A]/10 text-[#724A6A]"
                   : "text-[#4A4A6A] hover:bg-[#724A6A]/8"
@@ -171,19 +171,19 @@ export default function Navbar() {
           <div className="flex flex-col gap-2 pt-2 border-t border-[#E8E0D0]">
             {session?.user ? (
               <>
-                <Link href={dashboardHref} onClick={() => setMenuOpen(false)} className="btn-outline text-sm py-2.5 text-center">
+                <Link href={dashboardHref} onClick={() => setMenuOpen(false)} className="btn-outline text-sm py-2 text-center">
                   Dashboard
                 </Link>
-                <button onClick={handleSignOut} className="btn-primary text-sm py-2.5 text-center bg-[#C62828] hover:bg-[#B71C1C]">
+                <button onClick={handleSignOut} className="btn-primary text-sm py-2 text-center bg-[#C62828] hover:bg-[#B71C1C]">
                   Sign Out
                 </button>
               </>
             ) : (
               <>
-                <Link href="/book" onClick={() => setMenuOpen(false)} className="btn-outline text-sm py-2.5 text-center">
-                  Book Now
-                </Link>
-                <Link href="/register" onClick={() => setMenuOpen(false)} className="btn-primary text-sm py-2.5 text-center">
+<Link href="/book" onClick={() => setMenuOpen(false)} className="btn-outline text-sm py-2 text-center">
+                   Book Now
+                 </Link>
+                 <Link href="/register" onClick={() => setMenuOpen(false)} className="btn-primary text-sm py-2 text-center">
                   SignUp
                 </Link>
               </>

@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
         include: {
           service: { select: { id: true, title: true, icon: true, category: true } },
           providerSlot: { select: { startTime: true, endTime: true } },
+          virtualMeeting: true,
         },
         orderBy: { createdAt: "desc" },
         take: 20,
@@ -86,5 +87,13 @@ function formatBooking(b: any) {
     status: b.status.toLowerCase(),
     paymentStatus: b.paymentStatus.toLowerCase(),
     serviceId: b.serviceId,
+    virtualMeeting: b.virtualMeeting ? {
+      link: b.virtualMeeting.meetingLink,
+      platform: b.virtualMeeting.platform,
+      startTime: b.virtualMeeting.startTime,
+      endTime: b.virtualMeeting.endTime,
+    } : null,
+    selectedMode: b.selectedMode,
+    venueSnapshot: b.venueSnapshot,
   };
 }
