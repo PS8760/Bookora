@@ -5,6 +5,7 @@ import prisma from "@/prisma/prisma";
 import { Prisma, BookingStatus, PaymentStatus } from "@prisma/client";
 import { invalidateSlotCache } from "@/lib/slot-cache";
 import { stripe } from "@/lib/stripe";
+import { sendBookingConfirmationEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -335,6 +336,21 @@ export async function POST(request: NextRequest) {
     // Immediately bust the slot cache so the next poll reflects updated capacity.
     const slotDate = result.slotStartTime.toISOString().slice(0, 10);
     invalidateSlotCache(serviceId, slotDate);
+
+    // ── Email Notification ─────────────────────────────────────────────────────
+    if (user.email) {
+      try {
+        await sendBookingConfirmationEmail({
+          to: user.email,
+          customerName: user.name || "Customer",
+          serviceName: (result.booking as any).service.title,
+          startTime: result.slotStartTime,
+          bookingId: result.booking.id,
+        });
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
+      }
+    }
 
     return NextResponse.json({ 
       data: result.booking,
