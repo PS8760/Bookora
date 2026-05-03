@@ -138,7 +138,13 @@ export default function BookingPage() {
       if (!params.id || isHiddenRef.current) return;
       if (isInitial) { setSlotsLoading(true); setSlotsError(""); }
 
-      const dateStr = date.toISOString().slice(0, 10);
+      // Use local calendar date parts — NOT toISOString() which converts to UTC
+      // and would shift the date back by one day for timezones like IST (+5:30)
+      const dateStr = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+      ].join("-");
       const query   = new URLSearchParams({ date: dateStr });
       if (shareToken) query.set("share", shareToken);
       const url = `/api/appointments/${params.id}/slots?${query.toString()}`;
@@ -288,14 +294,14 @@ export default function BookingPage() {
           setSelectedSlot(null);
           setStep(0);
           if (selectedDate) {
-            const dateStr = selectedDate.toISOString().slice(0, 10);
+            const dateStr = [selectedDate.getFullYear(), String(selectedDate.getMonth() + 1).padStart(2, "0"), String(selectedDate.getDate()).padStart(2, "0")].join("-");
             clearETagCache(`/api/appointments/${params.id}/slots?date=${dateStr}`);
             pollSlots(selectedDate, true);
           }
         } else {
           setBookingError(errorMsg);
           if (selectedDate) {
-            const dateStr = selectedDate.toISOString().slice(0, 10);
+            const dateStr = [selectedDate.getFullYear(), String(selectedDate.getMonth() + 1).padStart(2, "0"), String(selectedDate.getDate()).padStart(2, "0")].join("-");
             clearETagCache(`/api/appointments/${params.id}/slots?date=${dateStr}`);
             pollSlots(selectedDate, false);
           }

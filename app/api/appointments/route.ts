@@ -192,8 +192,29 @@ export async function POST(request: NextRequest) {
         physicalPrice: physicalPrice ? Number(physicalPrice) : null,
         virtualDuration: virtualDuration ? Number(virtualDuration) : null,
         physicalDuration: physicalDuration ? Number(physicalDuration) : null,
+        schedules: {
+          create: {
+            type: "WEEKLY",
+            weeklyRules: {
+              create: [1, 2, 3, 4, 5].map((day) => ({
+                dayOfWeek: day,
+                startMinute: 9 * 60,
+                endMinute: 18 * 60,
+              })),
+            },
+          },
+        },
       },
     });
+
+    if (isPublished) {
+      const { generateSlots } = await import("@/lib/slots");
+      try {
+        await generateSlots(service.id);
+      } catch (err) {
+        console.error("Failed to generate slots during service creation:", err);
+      }
+    }
 
     return NextResponse.json({ data: service }, { status: 201 });
   } catch (error) {

@@ -11,7 +11,7 @@
  */
 
 import prisma from "@/prisma/prisma";
-import { Prisma } from "@/prisma/generated/prisma";
+import { Prisma } from "@prisma/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,7 +93,7 @@ export async function generateSlots(
 
   // Build a Set of lookup keys for O(1) matching
   const existingKeys = new Set(
-    existing.map((s) => `${s.startTime.getTime()}|${s.endTime.getTime()}|${s.userId}|${s.resourceId}`)
+    existing.map((s: any) => `${s.startTime.getTime()}|${s.endTime.getTime()}|${s.userId}|${s.resourceId}`)
   );
 
   const newSlots = uniqueCandidates.filter(
@@ -130,7 +130,7 @@ export async function invalidateSlots(
     select: { providerSlotId: true },
   });
 
-  const protectedIds = activeBookingSlotIds.map((b) => b.providerSlotId);
+  const protectedIds = activeBookingSlotIds.map((b: any) => b.providerSlotId);
 
   await db.providerSlot.updateMany({
     where: {
@@ -206,8 +206,8 @@ export async function getAvailableSlots(
   // Filter out past slots and fully-booked slots
   const now = new Date();
   return slots
-    .filter((s) => s.startTime > now && s.capacity - s.booked > 0)
-    .map((slot) => ({
+    .filter((s: any) => s.startTime > now && s.capacity - s.booked > 0)
+    .map((slot: any) => ({
       id: slot.id,
       startUtc: slot.startTime,
       endUtc: slot.endTime,

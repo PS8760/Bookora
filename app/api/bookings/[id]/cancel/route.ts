@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { Prisma } from "@prisma/client";
 import { invalidateSlotCacheForSlot } from "@/lib/slot-cache";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export async function POST(
     const user = session.user as SessionUser;
     const role = user.role ?? "customer";
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Lock the booking row
       const bookings = await tx.$queryRaw<any[]>`
         SELECT b.*, ps."serviceId", ps.id as "slotId", ps."startTime" as "slotStartTime"

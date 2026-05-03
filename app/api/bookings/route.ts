@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { auth } from "@/lib/auth";
 import prisma from "@/prisma/prisma";
+import { Prisma, BookingStatus, PaymentStatus } from "@prisma/client";
 import { invalidateSlotCache } from "@/lib/slot-cache";
 import { stripe } from "@/lib/stripe";
 import { sendBookingConfirmationEmail } from "@/lib/email";
@@ -49,8 +50,8 @@ export async function GET(request: NextRequest) {
     const limit  = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), 100);
     const skip   = (page - 1) * limit;
 
-    const where = {
-      ...(status ? { status: status.toUpperCase() as any } : {}),
+    const where: Prisma.BookingWhereInput = {
+      ...(status ? { status: status.toUpperCase() as BookingStatus } : {}),
       ...(role === "organiser" ? { service: { organiserId: user.id } } : {}),
     };
 
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Atomic transaction ─────────────────────────────────────────────────────
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Fetch slot + service in one query
       const slot = await tx.providerSlot.findFirst({
         where: { id: slotId, serviceId, isActive: true },
@@ -184,7 +185,7 @@ export async function POST(request: NextRequest) {
           throw new Error("REQUIRED_QUESTIONS_MISSING");
         }
         if (answer?.selectedOptionId) {
-          const valid = question.options.some((o) => o.id === answer.selectedOptionId);
+          const valid = question.options.some((o: { id: string }) => o.id === answer.selectedOptionId);
           if (!valid) throw new Error("INVALID_QUESTION_OPTION");
         }
       }
@@ -275,8 +276,8 @@ export async function POST(request: NextRequest) {
           answers: questionAnswers.length > 0
             ? {
                 create: questionAnswers
-                  .filter((a: any) => a.questionId)
-                  .map((a: any) => ({
+                  .filter((a: { questionId?: string }) => a.questionId)
+                  .map((a: { questionId?: string; answerText?: string; selectedOptionId?: string }) => ({
                     questionId:       a.questionId,
                     answerText:       a.answerText       ?? null,
                     selectedOptionId: a.selectedOptionId ?? null,
@@ -337,12 +338,12 @@ export async function POST(request: NextRequest) {
     // ── Stripe Payment Intent Creation ─────────────────────────────────────────
     let clientSecret: string | null = null;
     const booking = result.booking;
-    const payment = (booking as any).payments?.[0];
+    const payment = booking.payments?.[0];
 
-    if (payment && (booking as any).service?.advancePayment && (booking as any).service?.paymentAmount) {
+    if (payment && booking.service?.advancePayment && booking.service?.paymentAmount) {
       try {
         // Convert amount (Decimal) to paise (Integer) for Stripe
-        const amountInPaise = Math.round(Number((booking as any).service.paymentAmount) * 100);
+        const amountInPaise = Math.round(Number(booking.service.paymentAmount) * 100);
         
         if (!stripe) {
           throw new Error("STRIPE_NOT_CONFIGURED");
@@ -350,7 +351,7 @@ export async function POST(request: NextRequest) {
         
         const intent = await stripe.paymentIntents.create({
           amount: amountInPaise,
-          currency: (booking as any).service.currency.toLowerCase(),
+          currency: booking.service.currency.toLowerCase(),
           metadata: {
             bookingId: booking.id,
             paymentId: payment.id,
@@ -400,8 +401,8 @@ export async function POST(request: NextRequest) {
       data: result.booking,
       clientSecret,
       payment: clientSecret ? {
-        amount: Number((booking as any).service.paymentAmount),
-        currency: (booking as any).service.currency
+        amount: Number(booking.service.paymentAmount),
+        currency: booking.service.currency
       } : null
     }, { status: 201 });
   } catch (error) {

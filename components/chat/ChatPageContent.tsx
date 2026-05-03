@@ -16,7 +16,7 @@ interface Conversation {
 }
 
 export default function ChatPageContent({ currentUserId }: { currentUserId: string }) {
-  const { data: convData, mutate } = useSWR("/api/chat/list", jsonFetcher, {
+  const { data: convData, mutate } = useSWR<{ data: any }>("/api/chat/list", jsonFetcher, {
     ...dashboardSWRConfig,
     refreshInterval: 5000,
   });
